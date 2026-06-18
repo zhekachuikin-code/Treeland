@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>TreeLand — Генератор описаний</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:         #0d0f12;
+            --surface:    #141720;
+            --surface2:   #1b1f2e;
+            --border:     #252a3a;
+            --border2:    #2e344a;
+            --green:      #3ddc84;
+            --green-dim:  #2a9e5e;
+            --blue:       #4f9ef8;
+            --blue-dim:   #2b6cb0;
+            --accent:     #f0c44a;
+            --violet:     #c084fc;
+            --text:       #e8ecf4;
+            --text-muted: #7a8299;
+            --text-dim:   #4a5168;
+            --radius:     10px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 36px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .topbar-logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--green);
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .topbar-logo span { color: var(--text-muted); font-weight: 400; }
+        .topbar-badge {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 0;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 24px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .sidebar-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .guide-step { display: flex; gap: 12px; align-items: flex-start; }
+        .step-num {
+            flex-shrink: 0;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 11px; font-weight: 700;
+            color: var(--green);
+        }
+        .step-body h4 { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+        .step-body p  { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+        .guide-tip {
+            background: linear-gradient(135deg, rgba(61,220,132,0.07), rgba(61,220,132,0.03));
+            border: 1px solid rgba(61,220,132,0.18);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+        }
+        .guide-tip .tip-label {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.2px;
+            color: var(--green); margin-bottom: 6px;
+        }
+        .guide-tip p { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+        .guide-tip p + p { margin-top: 5px; }
+
+        .main {
+            padding: 28px 36px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .page-head h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px; font-weight: 800;
+            color: var(--text); letter-spacing: -0.5px;
+        }
+        .page-head p { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .card-label {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.2px;
+            color: var(--text-dim); margin-bottom: 10px;
+        }
+
+        .input-row { display: flex; gap: 10px; align-items: center; }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]::placeholder { color: var(--text-dim); }
+        input[type="text"]:focus { border-color: var(--green-dim); }
+
+        .btn {
+            padding: 10px 18px;
+            border: none; border-radius: var(--radius);
+            font-family: 'Syne', sans-serif;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.18s, transform 0.12s;
+            white-space: nowrap; letter-spacing: 0.3px;
+        }
+        .btn:hover:not(:disabled) { opacity: 0.82; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+        .btn-primary  { background: linear-gradient(135deg, #3ddc84, #25a85e); color: #0d0f12; }
+        .btn-nobrand  { background: linear-gradient(135deg, #f0c44a, #c9a020); color: #0d0f12; }
+        .btn-seo      { background: linear-gradient(135deg, #4f9ef8, #2b6cb0); color: #fff; }
+        .btn-name     { background: linear-gradient(135deg, #c084fc, #7c3aed); color: #fff; }
+        .btn-sheets   { background: linear-gradient(135deg, #34d399, #059669); color: #0d0f12; }
+
+        .action-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+
+        .article-badge {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            width: fit-content;
+        }
+        .article-badge.visible { display: flex; }
+        .article-badge-label {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-dim);
+        }
+        .article-badge-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px; font-weight: 600;
+            color: var(--accent);
+        }
+
+        #status {
+            font-size: 12px; color: var(--text-muted);
+            min-height: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 10px;
+        }
+        #status.ok  { color: var(--green); }
+        #status.err { color: #f87171; }
+
+        .notes-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .notes-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 13px 18px;
+            background: linear-gradient(90deg, #1e1a2e, #181624);
+            cursor: pointer; user-select: none;
+        }
+        .notes-header.open { border-bottom: 1px solid var(--border); }
+        .notes-header-left { display: flex; align-items: center; gap: 10px; }
+        .notes-header-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); }
+        .notes-header-hint  { font-size: 11px; color: var(--text-muted); }
+        .notes-badge {
+            font-size: 10px; font-weight: 700;
+            padding: 2px 9px; border-radius: 10px;
+            background: rgba(240,196,74,0.12); color: var(--accent);
+            border: 1px solid rgba(240,196,74,0.2);
+        }
+        .notes-toggle { font-size: 12px; color: var(--text-dim); transition: transform 0.22s; }
+        .notes-toggle.open { transform: rotate(180deg); }
+        .notes-body { display: none; flex-direction: column; gap: 10px; padding: 14px 18px 16px; }
+        .notes-body.open { display: flex; }
+        .chips-label { font-size: 10px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; }
+        .notes-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip {
+            padding: 4px 11px;
+            background: var(--surface2); border: 1px solid var(--border2);
+            border-radius: 20px; font-size: 11px; color: var(--text-muted);
+            cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        .chip:hover { background: rgba(240,196,74,0.1); border-color: rgba(240,196,74,0.35); color: var(--accent); }
+
+        #managerNotes {
+            width: 100%; min-height: 90px; max-height: 220px;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.65;
+            padding: 10px 12px;
+            background: var(--bg); border: 1px solid var(--border2);
+            border-radius: var(--radius); color: var(--text); resize: vertical; outline: none;
+            transition: border-color 0.2s;
+        }
+        #managerNotes:focus { border-color: rgba(240,196,74,0.45); }
+        #managerNotes::placeholder { color: var(--text-dim); }
+        .notes-footer { display: flex; justify-content: space-between; align-items: center; }
+        .notes-chars  { font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+        .notes-clear  { font-size: 11px; color: var(--text-dim); cursor: pointer; background: none; border: none; transition: color 0.15s; }
+        .notes-clear:hover { color: #f87171; }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .lang-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+            flex-direction: column;
+        }
+        .lang-block.visible { display: flex; }
+
+        .lang-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 11px 16px;
+        }
+        .lang-header.ua      { background: linear-gradient(90deg, #1a3a5c, #162f48); border-bottom: 1px solid #1e3d5e; }
+        .lang-header.ru      { background: linear-gradient(90deg, #1a3a28, #142d1e); border-bottom: 1px solid #1e3d2a; }
+        .lang-header.seo-ua  { background: linear-gradient(90deg, #2a2a1a, #22221a); border-bottom: 1px solid #3a3a1e; }
+        .lang-header.seo-ru  { background: linear-gradient(90deg, #2a1a2a, #22162a); border-bottom: 1px solid #3a1e3a; }
+        .lang-header.name-ua { background: linear-gradient(90deg, #1a3a5c, #162f48); border-bottom: 1px solid #1e3d5e; }
+        .lang-header.name-ru { background: linear-gradient(90deg, #1a3a28, #142d1e); border-bottom: 1px solid #1e3d2a; }
+
+        .lang-name {
+            font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+            color: var(--text); display: flex; align-items: center; gap: 8px;
+        }
+        .dot-blue   { width:7px;height:7px;border-radius:50%;background:var(--blue);display:inline-block; }
+        .dot-green  { width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block; }
+        .dot-gold   { width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block; }
+        .dot-violet { width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block; }
+
+        .lang-block textarea {
+            flex: 1; width: 100%; height: 280px;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6;
+            padding: 12px 14px; border: none; resize: vertical;
+            background: var(--bg); color: #9ab3d4; outline: none;
+        }
+        .lang-block textarea.seo-ta  { color: #c8b87a; height: 200px; }
+        .lang-block textarea.name-ta { height: 68px; color: #7ab4e8; font-size: 13px; resize: none; }
+
+        .copy-btn {
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.75);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px; cursor: pointer;
+            font-size: 11px; font-weight: 600;
+            transition: background 0.18s;
+            font-family: 'Syne', sans-serif;
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.14); }
+        .copy-btn.copied { color: var(--green); border-color: rgba(61,220,132,0.3); }
+
+        .name-section-header {
+            display: none; align-items: center; gap: 10px; padding: 4px 0;
+        }
+        .name-section-header.visible { display: flex; }
+        .name-section-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--blue); white-space: nowrap;
+        }
+        .name-section-line {
+            flex: 1; height: 1px;
+            background: linear-gradient(90deg, rgba(79,158,248,0.3), transparent);
+        }
+        .name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        .foot-note { font-size: 11px; color: var(--text-dim); padding-top: 2px; }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-logo">
+        <img src="https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg" alt="TreeLand" style="height:36px;width:auto;display:block;">
+        <span>/ Генератор описаний</span>
+    </div>
+    <div class="topbar-badge">Gemini · УКР + РУС · HTML</div>
+</div>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-title">📖 Як користуватися</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="guide-step">
+                <div class="step-num">1</div>
+                <div class="step-body"><h4>Вставте посилання</h4><p>Повний URL зі сторінки товару на будь-якому маркетплейсі.</p></div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">2</div>
+                <div class="step-body"><h4>Додайте примітки</h4><p>Бренд, акції, доставка, гарантія — AI врахує їх в описі.</p></div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">3</div>
+                <div class="step-body"><h4>Створіть опис</h4><p>«Створити» — з брендом. «БЕЗ БРЕНДА» — без згадки бренду. AI також витягне артикул.</p></div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">4</div>
+                <div class="step-body"><h4>Згенеруйте SEO-ключі</h4><p>Додаткові ключові слова для просування.</p></div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">5</div>
+                <div class="step-body"><h4>Покращте найменування</h4><p>AI складе SEO-оптимальну назву на основі опису і ключів.</p></div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">6</div>
+                <div class="step-body"><h4>Збережіть в таблицю</h4><p>Кнопка «📊 В таблицю» запише всі дані разом з артикулом.</p></div>
+            </div>
+        </div>
+        <div class="guide-tip">
+            <div class="tip-label">💡 Поради</div>
+            <p>Товар має бути публічно доступний (без авторизації).</p>
+            <p>Запити захищені та обробляються на сервері.</p>
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <div class="page-head">
+            <h1>Генератор описаній товарів</h1>
+            <p>HTML-опис · SEO-ключі · Покращена назва · УКР + РУС</p>
+        </div>
+
+        <div class="card">
+            <div class="card-label">Посилання на товар</div>
+            <div class="input-row">
+                <input type="text" id="link" placeholder="https://prom.ua/p1234567890-tovar.html">
+            </div>
+
+            <div class="article-badge" id="articleBadge">
+                <span class="article-badge-label">Артикул</span>
+                <span class="article-badge-value" id="articleValue">—</span>
+            </div>
+
+            <div class="action-row">
+                <button class="btn btn-primary" id="genBtn"      onclick="generate(false)">✨ Створити опис</button>
+                <button class="btn btn-nobrand" id="noBrandBtn"  onclick="generate(true)">🚫 БЕЗ БРЕНДА</button>
+                <button class="btn btn-seo"     id="seoBtn"      onclick="generateSEO()"  disabled>🔑 SEO-ключі</button>
+                <button class="btn btn-name"    id="nameBtn"     onclick="generateName()" disabled>✦ Назва</button>
+                <button class="btn btn-sheets"  id="saveBtn"     onclick="saveToSheets()" disabled>📊 В таблицю</button>
+                <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
+                   target="_blank" class="btn"
+                   style="background:var(--surface2);color:var(--text-muted);border:1px solid var(--border2);text-decoration:none;">
+                    📋 Відкрити таблицю
+                </a>
+            </div>
+            <div id="status"></div>
+        </div>
+
+        <!-- NOTES -->
+        <div class="notes-card">
+            <div class="notes-header" id="notesToggleBtn" onclick="toggleNotes()">
+                <div class="notes-header-left">
+                    <span style="font-size:15px">📋</span>
+                    <div>
+                        <div class="notes-header-title">Примітки менеджера</div>
+                        <div class="notes-header-hint">Бренд, акції, доставка, гарантія...</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="notes-badge" id="notesBadge" style="display:none">Заповнено</span>
+                    <span class="notes-toggle" id="notesArrow">▼</span>
+                </div>
+            </div>
+            <div class="notes-body" id="notesBody">
+                <div>
+                    <div class="chips-label" style="margin-bottom:7px;">⚡ ШВИДКА ВСТАВКА</div>
+                    <div class="notes-chips">
+                        <span class="chip" onclick="insertChip('brand')">🏷️ Бренд</span>
+                        <span class="chip" onclick="insertChip('promo')">🎁 Акція</span>
+                        <span class="chip" onclick="insertChip('delivery')">🚚 Доставка</span>
+                        <span class="chip" onclick="insertChip('warranty')">🛡️ Гарантія</span>
+                        <span class="chip" onclick="insertChip('assembly')">🔧 Монтаж</span>
+                        <span class="chip" onclick="insertChip('gift')">🎀 Подарунок</span>
+                        <span class="chip" onclick="insertChip('stock')">📦 Наявність</span>
+                        <span class="chip" onclick="insertChip('payment')">💳 Оплата</span>
+                        <span class="chip" onclick="insertChip('custom')">✏️ Своє</span>
+                    </div>
+                </div>
+                <textarea id="managerNotes"
+                    placeholder="Введіть примітки або використовуйте швидку вставку вище...&#10;&#10;Приклад:&#10;Бренд: TreeLand&#10;Акція: -15% до кінця місяця&#10;Доставка: безкоштовно від 1500 грн"
+                    oninput="onNotesChange()"></textarea>
+                <div class="notes-footer">
+                    <span class="notes-chars" id="notesChars">0 символів</span>
+                    <button class="notes-clear" onclick="clearNotes()">✕ Очистити</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DESCRIPTIONS -->
+        <div class="results-grid">
+            <div class="lang-block" id="blockUA">
+                <div class="lang-header ua">
+                    <div class="lang-name"><span class="dot-blue"></span>🇺🇦 Опис (УКР)</div>
+                    <button class="copy-btn" onclick="copyText('resUA', this)">Скопіювати</button>
+                </div>
+                <textarea id="resUA" readonly></textarea>
+            </div>
+            <div class="lang-block" id="blockRU">
+                <div class="lang-header ru">
+                    <div class="lang-name"><span class="dot-green"></span>🇷🇺 Описание (РУС)</div>
+                    <button class="copy-btn" onclick="copyText('resRU', this)">Скопировать</button>
+                </div>
+                <textarea id="resRU" readonly></textarea>
+            </div>
+        </div>
+
+        <!-- SEO -->
+        <div class="results-grid">
+            <div class="lang-block" id="blockSEO-UA">
+                <div class="lang-header seo-ua">
+                    <div class="lang-name"><span class="dot-gold"></span>🔑 SEO Ключі (УКР)</div>
+                    <button class="copy-btn" onclick="copyText('seoUA', this)">Скопіювати</button>
+                </div>
+                <textarea id="seoUA" readonly class="seo-ta"></textarea>
+            </div>
+            <div class="lang-block" id="blockSEO-RU">
+                <div class="lang-header seo-ru">
+                    <div class="lang-name"><span class="dot-violet"></span>🔑 SEO Ключи (РУС)</div>
+                    <button class="copy-btn" onclick="copyText('seoRU', this)">Скопировать</button>
+                </div>
+                <textarea id="seoRU" readonly class="seo-ta"></textarea>
+            </div>
+        </div>
+
+        <!-- NAME -->
+        <div class="name-section-header" id="nameSectionHeader">
+            <span class="name-section-label">✦ SEO-оптимальне найменування</span>
+            <div class="name-section-line"></div>
+        </div>
+        <div class="name-grid">
+            <div class="lang-block" id="blockNameUA">
+                <div class="lang-header name-ua">
+                    <div class="lang-name"><span class="dot-blue"></span>🇺🇦 Назва (УКР)</div>
+                    <button class="copy-btn" onclick="copyText('nameUA', this)">Скопіювати</button>
+                </div>
+                <textarea id="nameUA" readonly class="name-ta"></textarea>
+            </div>
+            <div class="lang-block" id="blockNameRU">
+                <div class="lang-header name-ru">
+                    <div class="lang-name"><span class="dot-green"></span>🇷🇺 Название (РУС)</div>
+                    <button class="copy-btn" onclick="copyText('nameRU', this)">Скопировать</button>
+                </div>
+                <textarea id="nameRU" readonly class="name-ta"></textarea>
+            </div>
+        </div>
+
+        <div class="foot-note">Всі поля лише для читання — використовуйте кнопку «Скопіювати» в кожному блоці.</div>
+    </main>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const SERVER_URL = 'https://gemini-api-server-dnzk.onrender.com/api/generate';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzvaZuPB2IAzI-2Zd-D3iSx0hRImvFMU739IQuWQ7xsHHypjAV3RFEE_nZg6Xe1h58YcQ/exec';
+
+// ─── HTML стили TreeLand ──────────────────────────────────────────────────────
+const TREELAND_STYLES = `<style type="text/css">
+.tl-wrapper{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#333;line-height:1.6;max-width:1200px;margin:0 auto;padding:20px;background-color:#fff}
+.tl-title{color:#2e7d32;font-size:28px;font-weight:700;margin-bottom:15px;line-height:1.2}
+.tl-subtitle{color:#2e7d32;font-size:22px;border-bottom:2px solid #81c784;padding-bottom:8px;margin-top:35px;margin-bottom:20px;text-transform:uppercase;letter-spacing:1px}
+.tl-hero{display:flex;align-items:center;gap:30px;margin-bottom:40px;flex-wrap:wrap}
+.tl-hero-img{flex:1;min-width:300px}
+.tl-hero-img img{width:100%;height:auto;border-radius:15px;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.tl-hero-text{flex:1;min-width:300px}
+.tl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.tl-card{padding:20px;border-left:4px solid #2e7d32;background:#f9fdf9;border-radius:4px}
+.tl-tip{background-color:#e8f5e9;padding:25px;border-radius:12px;border-left:6px solid #2e7d32;margin:40px 0}
+.tl-buy-btn{display:inline-block;padding:16px 45px;background:linear-gradient(135deg,#4caf50 0%,#2e7d32 100%);color:#ffffff!important;text-decoration:none!important;border-radius:50px;font-weight:700;font-size:18px;box-shadow:0 4px 15px rgba(46,125,50,0.3)}
+</style>`;
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let currentArticle = '';
+let _noBrandMode   = false;
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = type || '';
+}
+function showBlock(id) { const el = document.getElementById(id); if (el) el.classList.add('visible'); }
+function hideBlock(id) { const el = document.getElementById(id); if (el) el.classList.remove('visible'); }
+
+function showArticle(value) {
+    currentArticle = value || '';
+    const badge = document.getElementById('articleBadge');
+    const val   = document.getElementById('articleValue');
+    if (currentArticle) { val.textContent = currentArticle; badge.classList.add('visible'); }
+    else { badge.classList.remove('visible'); }
+}
+
+function extractArticle(pageText) {
+    const patterns = [
+        /(?:артикул|арт(?:икул)?\.?|код товару|код товара|article|sku|item\s*(?:no|num|#|code))[:\s#]+([A-Za-zА-Яа-яЁёІіЇїЄє0-9][-A-Za-zА-Яа-яЁёІіЇїЄє0-9_.\/]{1,30})/gi,
+    ];
+    for (const re of patterns) {
+        re.lastIndex = 0;
+        const m = re.exec(pageText);
+        if (m && m[1]) return m[1].trim();
+    }
+    return '—';
+}
+
+async function fetchPageText(url) {
+    try {
+        const resp = await fetch('https://r.jina.ai/' + url);
+        if (!resp.ok) return null;
+        return await resp.text();
+    } catch (e) { return null; }
+}
+
+async function callServer(prompt) {
+    try {
+        const resp = await fetch(SERVER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+        });
+        const data = await resp.json();
+        return data.ok ? { ok: true, text: data.text } : { ok: false, text: '' };
+    } catch (e) {
+        return { ok: false, text: '' };
+    }
+}
+
+// ─── PROMPTS ──────────────────────────────────────────────────────────────────
+function buildPrompt(pageText, lang, managerNotes, noBrand) {
+    const isRu     = lang === 'russian';
+    const langLabel = isRu ? 'русском' : 'украинском';
+    const btnText   = isRu ? 'Купить сейчас' : 'Купити зараз';
+    const tipLabel  = isRu ? '🌿 Совет от Treeland' : '🌿 Порада від Treeland';
+    const advLabel  = isRu ? 'Преимущества' : 'Переваги';
+    const faqLabel  = isRu ? 'Частые вопросы' : 'Часті запитання';
+
+    const noBrandBlock = noBrand ? `
+⛔ РЕЖИМ «БЕЗ БРЕНДА» — СТРОГО ОБЯЗАТЕЛЬНО
+Визнач назву бренду/виробника з тексту сторінки.
+ПОВНІСТЮ ВИКЛЮЧИ цю назву з усього тексту опису:
+• НЕ згадуй бренд ніде: ні в заголовку, ні в характеристиках, ні в FAQ.
+• Замість назви бренду — нейтральні слова: «виробник», «дана модель», «цей товар».
+` : '';
+
+    const notesBlock = managerNotes ? `
+ДОДАТКОВА ІНФОРМАЦІЯ ВІД МЕНЕДЖЕРА (ОБОВ'ЯЗКОВО ВКЛЮЧИТИ):
+Органічно впиши цю інформацію в опис:
+"${managerNotes}"
+` : '';
+
+    const langRules = isRu ? `
+⛔⛔⛔ ТІЛЬКИ РОСІЙСЬКА МОВА — ЖОДНИХ ВИНЯТКІВ ⛔⛔⛔
+• Весь текст — виключно РОСІЙСЬКОЮ мовою.
+• ЗАБОРОНЕНІ українські букви: «і», «є», «ї», «ґ».
+• ЗАБОРОНЕНІ українські слова: "та", "також", "які", "що", "або", "цей/ця/це", "від", "є", "може", "дає", "має" та ін.
+• Кнопка: строго "Купить сейчас".` : `
+✅ Весь текст — виключно УКРАЇНСЬКОЮ мовою.
+• Кнопка: строго "Купити зараз".`;
+
+    return `Ти — досвідчений SEO-копірайтер інтернет-магазину Treeland.
+
+ДЖЕРЕЛО ДАНИХ (текст зі сторінки товару):
+${pageText}
+${notesBlock}
+${noBrandBlock}
+ГОЛОВНІ ПРАВИЛА:
+1. Пиши ТІЛЬКИ ${langLabel} мовою.
+2. НЕ вигадуй характеристики — використовуй ТІЛЬКИ дані з джерела.
+3. Виводь ТІЛЬКИ готовий HTML без markdown-обгорток (без \`\`\`html).
+4. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
+5. Кнопка "Купити/Купить": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
+6. Логотип TreeLand в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
+
+МОВНІ ПРАВИЛА:
+${langRules}
+
+СТРУКТУРА HTML-ОПИСУ (заповни реальними даними з джерела):
+<div class="tl-wrapper">
+
+<div class="tl-hero">
+  <div class="tl-hero-img" style="display:none">
+    <img alt="[НАЗВА ТОВАРУ]" src="[ПРЯМЕ ПОСИЛАННЯ НА ФОТО зі сторінки, якщо є]" />
+  </div>
+  <div class="tl-hero-text">
+    <h1 class="tl-title">[НАЗВА ТОВАРУ З МОДЕЛЛЮ/БРЕНДОМ]<br/>
+      <span style="color:#689f38">[КОРОТКИЙ СЛОГАН — ГОЛОВНА ВИГОДА, 6-10 СЛІВ]</span>
+    </h1>
+    <p>[ВСТУПНИЙ АБЗАЦ 4-5 РЕЧЕНЬ: що це, для кого, де використовується, ключова цінність]</p>
+  </div>
+</div>
+
+<table cellspacing="0" style="background:#f1f8e9;border-collapse:collapse;margin-bottom:30px;width:100%">
+  <tbody>
+    [РЯДОК ДЛЯ КОЖНОЇ ХАРАКТЕРИСТИКИ:
+    <tr><td style="border:1px solid #c8e6c9;color:#689f38;font-size:14px;padding:12px 16px;width:50%">Назва</td><td style="border:1px solid #c8e6c9;color:#2e7d32;font-weight:700;padding:12px 16px">Значення</td></tr>
+    Мінімум 4-8 рядків якщо дані є]
+  </tbody>
+</table>
+
+<h2 class="tl-subtitle">${advLabel}</h2>
+<div class="tl-grid">
+  [4-6 КАРТОК ПЕРЕВАГ на основі реальних даних товару:
+  <div class="tl-card"><strong>[ЗАГОЛОВОК 2-4 слова]</strong><p>[2-3 речення конкретно з користю для покупця]</p></div>]
+</div>
+
+<div class="tl-tip">
+  <h2 style="color:#2e7d32;margin-top:0">${tipLabel}</h2>
+  <p>[ПРАКТИЧНА ПОРАДА 2-3 речення по використанню/догляду за товаром]</p>
+</div>
+
+<h2 class="tl-subtitle">${faqLabel}</h2>
+<div>
+  <p><strong>[Питання 1 — найчастіше питання покупців]?</strong><br/>[Відповідь 2-3 речення].</p>
+</div>
+<div>
+  <p><strong>[Питання 2 — про монтаж, доставку або гарантію]?</strong><br/>[Відповідь 2-3 речення].</p>
+</div>
+<div>
+  <p><strong>[Питання 3 — про матеріали або безпеку]?</strong><br/>[Відповідь 2-3 речення].</p>
+</div>
+<div>
+  <p><strong>[Питання 4 — про розміри або сумісність]?</strong><br/>[Відповідь 2-3 речення].</p>
+</div>
+
+<div style="margin-top:40px"><a class="tl-buy-btn" href="#">${btnText}</a></div>
+<div style="border-top:1px dashed #c8e6c9;margin-top:50px;padding-top:20px;text-align:center">
+  <img alt="Treeland" src="https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg" />
+</div>
+
+</div>`;
+}
+
+function buildTranslatePrompt(uaHtml, noBrand) {
+    const noBrandNote = noBrand
+        ? '\n⛔ РЕЖИМ «БЕЗ БРЕНДА»: в переводе ПОЛНОСТЬЮ ИСКЛЮЧИ название бренда — заменяй нейтральными словами.\n'
+        : '';
+    return `Ты — профессиональный переводчик интернет-магазина Treeland.
+Переведи готовое HTML-описание товара с УКРАИНСКОГО на РУССКИЙ язык.
+${noBrandNote}
+ПРАВИЛА:
+• Переводи ДОСЛОВНО — сохраняй смысл, факты, структуру.
+• НЕ добавляй и НЕ убирай информацию.
+• Сохраняй всю HTML-разметку, классы, теги — меняй только текст.
+• Кнопку "Купити зараз" замени на "Купить сейчас".
+• Весь текст — исключительно РУССКИЙ. Запрещены украинские буквы: «і», «є», «ї», «ґ».
+• Запрещены украинские слова: "та", "також", "які", "що", "або", "від", "є", "може" и др.
+• Логотип Treeland оставь без изменений.
+• Выводи только голый HTML без markdown-обёрток.
+
+ИСХОДНОЕ УКРАИНСКОЕ ОПИСАНИЕ:
+${uaHtml}`;
+}
+
+function buildSEOPrompt(text, lang, noBrand) {
+    const noBrandNote = noBrand
+        ? ' ВАЖЛИВО: повністю виключи назву бренду/виробника з ключових слів.'
+        : '';
+    const instruction = lang === 'ua'
+        ? `Ти — SEO-спеціаліст. Напиши 15-20 релевантних SEO-ключів для просування цього тексту УКРАЇНСЬКОЮ мовою. Виведи їх просто через кому, без нумерації та списків.${noBrandNote}`
+        : `Ты — SEO-специалист. Напиши 15-20 релевантных SEO-ключей для продвижения этого текста на РУССКОМ языке. Выведи их просто через запятую, без нумерации и списков.${noBrandNote}`;
+    return `${instruction}\n\n${text}`;
+}
+
+function buildNamePrompt(textUA, textRU, seoUA, seoRU) {
+    return `У тебе є готовий опис товару та SEO-ключі на двох мовах.
+
+ОПИС (УКР):
+${textUA}
+
+ОПИС (РУС):
+${textRU}
+
+${seoUA ? `SEO-КЛЮЧІ (УКР):\n${seoUA}\n` : ''}
+${seoRU ? `SEO-КЛЮЧІ (РУС):\n${seoRU}\n` : ''}
+
+Твоє завдання — скласти SEO-оптимальну назву товару за шаблоном.
+
+КРОК 1 — Витягни з опису:
+A = Тип товару (наприклад: гойдалка, стіл, гірка, пісочниця)
+B = Назва моделі (якщо є)
+C = Торгова марка / бренд
+D = 1-2 ключові характеристики з SEO-ключів
+E = Колір або варіант (якщо вказано)
+F = Матеріал (якщо вказано)
+G = Розміри або навантаження (якщо вказані)
+
+КРОК 2 — Склади назву СТРОГО в такому порядку:
+[A] [B] [C] [D] [G] ([F, E])
+
+Якщо колір/варіант відсутній — дужки не потрібні.
+
+ЗАБОРОНЕНО: лапки будь-якого виду, рекламні слова.
+
+Виведи СТРОГО у форматі:
+UA: [назва українською]
+RU: [назва російською]
+
+Жодних пояснень, лише два рядки.`;
+}
+
+// ─── GENERATE ─────────────────────────────────────────────────────────────────
+async function generate(noBrand) {
+    const url = document.getElementById('link').value.trim();
+    if (!url) { setStatus('⚠️ Вставте посилання на товар!', 'err'); return; }
+    if (!url.startsWith('http')) { setStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
+
+    _noBrandMode = noBrand;
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+    const modeLabel = noBrand ? ' [БЕЗ БРЕНДА]' : '';
+
+    document.getElementById('genBtn').disabled     = true;
+    document.getElementById('noBrandBtn').disabled = true;
+    document.getElementById('seoBtn').disabled     = true;
+    document.getElementById('nameBtn').disabled    = true;
+    document.getElementById('saveBtn').disabled    = true;
+    ['blockUA','blockRU','blockSEO-UA','blockSEO-RU','blockNameUA','blockNameRU'].forEach(hideBlock);
+    document.getElementById('nameSectionHeader').classList.remove('visible');
+    ['resUA','resRU','seoUA','seoRU','nameUA','nameRU'].forEach(id => document.getElementById(id).value = '');
+    showArticle('');
+
+    setStatus('⏳ Парсинг сторінки товару...', '');
+    const pageText = await fetchPageText(url);
+    if (!pageText) {
+        setStatus('❌ Не вдалося зчитати дані з сайту.', 'err');
+        document.getElementById('genBtn').disabled     = false;
+        document.getElementById('noBrandBtn').disabled = false;
+        return;
+    }
+
+    showArticle(extractArticle(pageText));
+    setStatus(`⏳ Генерую УКР опис${modeLabel}...`, '');
+
+    const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, noBrand));
+    if (ua.ok) {
+        document.getElementById('resUA').value = TREELAND_STYLES + ua.text;
+        showBlock('blockUA');
+        setStatus(`⏳ Перекладаю на РУС${modeLabel}...`, '');
+
+        const ru = await callServer(buildTranslatePrompt(ua.text, noBrand));
+        if (ru.ok) {
+            document.getElementById('resRU').value = TREELAND_STYLES + ru.text;
+            showBlock('blockRU');
+            document.getElementById('seoBtn').disabled = false;
+            setStatus(`✅ Описи готові${modeLabel}! Артикул: ${currentArticle}. Наступний крок — SEO-ключі.`, 'ok');
+        } else {
+            setStatus('⚠️ УКР готово, але сталася помилка при генерації РУС.', '');
+        }
+    } else {
+        setStatus('❌ Помилка при генерації опису.', 'err');
+    }
+
+    document.getElementById('genBtn').disabled     = false;
+    document.getElementById('noBrandBtn').disabled = false;
+}
+
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+async function generateSEO() {
+    const textUA = document.getElementById('resUA').value;
+    const textRU = document.getElementById('resRU').value;
+    if (!textUA || !textRU) { setStatus('⚠️ Спочатку згенеруйте опис!', 'err'); return; }
+
+    const btn = document.getElementById('seoBtn');
+    btn.disabled = true;
+    document.getElementById('nameBtn').disabled = true;
+    document.getElementById('saveBtn').disabled = true;
+    setStatus('⏳ Генерую SEO-ключі...', '');
+
+    const ua = await callServer(buildSEOPrompt(textUA, 'ua', _noBrandMode));
+    if (ua.ok) { document.getElementById('seoUA').value = ua.text; showBlock('blockSEO-UA'); }
+
+    const ru = await callServer(buildSEOPrompt(textRU, 'ru', _noBrandMode));
+    if (ru.ok) {
+        document.getElementById('seoRU').value = ru.text;
+        showBlock('blockSEO-RU');
+        document.getElementById('nameBtn').disabled = false;
+        document.getElementById('saveBtn').disabled = false;
+        setStatus('✅ SEO-ключі готові! Тепер можна покращити найменування.', 'ok');
+    } else {
+        setStatus('❌ Помилка при генерації SEO.', 'err');
+    }
+    btn.disabled = false;
+}
+
+// ─── NAME ─────────────────────────────────────────────────────────────────────
+async function generateName() {
+    const textUA = document.getElementById('resUA').value;
+    const textRU = document.getElementById('resRU').value;
+    if (!textUA || !textRU) { setStatus('⚠️ Спочатку згенеруйте опис!', 'err'); return; }
+
+    const btn = document.getElementById('nameBtn');
+    btn.disabled = true;
+    ['blockNameUA','blockNameRU'].forEach(hideBlock);
+    document.getElementById('nameSectionHeader').classList.remove('visible');
+    setStatus('⏳ Генерую найменування...', '');
+
+    const seoUA = document.getElementById('seoUA').value;
+    const seoRU = document.getElementById('seoRU').value;
+    const res = await callServer(buildNamePrompt(textUA, textRU, seoUA, seoRU));
+
+    if (res.ok) {
+        const lines = res.text.split('\n');
+        document.getElementById('nameUA').value = (lines.find(l => l.startsWith('UA:')) || '').replace('UA:', '').trim().replace(/["«»""]/g, '');
+        document.getElementById('nameRU').value = (lines.find(l => l.startsWith('RU:')) || '').replace('RU:', '').trim().replace(/["«»""]/g, '');
+        document.getElementById('nameSectionHeader').classList.add('visible');
+        showBlock('blockNameUA');
+        showBlock('blockNameRU');
+        setStatus('✅ Найменування покращено!', 'ok');
+    } else {
+        setStatus('❌ Помилка при генерації назви.', 'err');
+    }
+    btn.disabled = false;
+}
+
+// ─── SAVE TO SHEETS ───────────────────────────────────────────────────────────
+async function saveToSheets() {
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    setStatus('⏳ Зберігаю в таблицю...', '');
+    try {
+        await fetch(SHEETS_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+                article: currentArticle,
+                url:     document.getElementById('link').value   || '',
+                nameUA:  document.getElementById('nameUA').value || '',
+                nameRU:  document.getElementById('nameRU').value || '',
+                descUA:  document.getElementById('resUA').value  || '',
+                descRU:  document.getElementById('resRU').value  || '',
+                seoUA:   document.getElementById('seoUA').value  || '',
+                seoRU:   document.getElementById('seoRU').value  || '',
+            })
+        });
+        setStatus('✅ Збережено в Google Таблицю!', 'ok');
+    } catch (e) {
+        setStatus('❌ Помилка збереження.', 'err');
+    }
+    btn.disabled = false;
+}
+
+// ─── COPY ─────────────────────────────────────────────────────────────────────
+function copyText(id, btn) {
+    navigator.clipboard.writeText(document.getElementById(id).value);
+    const orig = btn.textContent;
+    btn.textContent = '✔ Скопійовано!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+}
+
+// ─── NOTES ────────────────────────────────────────────────────────────────────
+function toggleNotes() {
+    document.getElementById('notesBody').classList.toggle('open');
+    document.getElementById('notesArrow').classList.toggle('open');
+}
+const chipMap = {
+    brand:'Бренд: ', promo:'Акція: ', delivery:'Доставка: ', warranty:'Гарантія: ',
+    assembly:'Монтаж: ', gift:'Подарунок: ', stock:'Наявність: ', payment:'Оплата: ', custom:'Своє: '
+};
+function insertChip(k) {
+    const notes = document.getElementById('managerNotes');
+    notes.value += (notes.value.length > 0 && !notes.value.endsWith('\n') ? '\n' : '') + (chipMap[k] || k);
+    notes.focus();
+    onNotesChange();
+}
+function onNotesChange() {
+    const val = document.getElementById('managerNotes').value;
+    document.getElementById('notesBadge').style.display = val.length > 0 ? 'inline' : 'none';
+    document.getElementById('notesChars').textContent = val.length + ' символів';
+}
+function clearNotes() {
+    document.getElementById('managerNotes').value = '';
+    onNotesChange();
+}
+</script>
+</body>
+</html>
