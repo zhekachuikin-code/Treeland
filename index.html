@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>TreeLand — Генератор описаний</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --bg:         #0d0f12;
@@ -175,13 +176,38 @@
         }
         .btn:hover:not(:disabled) { opacity: 0.82; transform: translateY(-1px); }
         .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+        .btn-auto     { background: linear-gradient(135deg, #c084fc, #7c3aed); color: #fff; }
         .btn-primary  { background: linear-gradient(135deg, #3ddc84, #25a85e); color: #0d0f12; }
         .btn-nobrand  { background: linear-gradient(135deg, #f0c44a, #c9a020); color: #0d0f12; }
         .btn-seo      { background: linear-gradient(135deg, #4f9ef8, #2b6cb0); color: #fff; }
         .btn-name     { background: linear-gradient(135deg, #c084fc, #7c3aed); color: #fff; }
         .btn-sheets   { background: linear-gradient(135deg, #34d399, #059669); color: #0d0f12; }
+        .btn-batch    { background: linear-gradient(135deg, #f97316, #c2410c); color: #fff; }
+        .btn-ghost    { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border2); text-decoration: none; }
 
         .action-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+
+        /* ── MODE TABS ── */
+        .mode-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+        .mode-tab {
+            padding: 7px 16px;
+            border-radius: 20px;
+            font-family: 'Syne', sans-serif;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 0.4px;
+            cursor: pointer;
+            background: var(--surface2);
+            color: var(--text-muted);
+            border: 1px solid var(--border2);
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .mode-tab.active {
+            background: linear-gradient(135deg, rgba(192,132,252,0.18), rgba(124,58,237,0.1));
+            border-color: var(--violet);
+            color: var(--violet);
+        }
+        .mode-panel { display: none; }
+        .mode-panel.active { display: block; }
 
         .article-badge {
             display: none;
@@ -205,6 +231,127 @@
             font-size: 13px; font-weight: 600;
             color: var(--accent);
         }
+
+        /* ── BATCH TEXTAREA ── */
+        #batchLinks {
+            width: 100%; min-height: 110px; max-height: 260px;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6;
+            padding: 10px 12px;
+            background: var(--bg); border: 1px solid var(--border2);
+            border-radius: var(--radius); color: var(--text); resize: vertical; outline: none;
+        }
+        #batchLinks::placeholder { color: var(--text-dim); }
+        #batchLinks:focus { border-color: rgba(249,115,22,0.45); }
+        .batch-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+        #batchStatus { font-size: 12px; color: var(--text-muted); min-height: 16px; font-family: 'JetBrains Mono', monospace; margin-top: 10px; }
+        #batchStatus.ok  { color: var(--green); }
+        #batchStatus.err { color: #f87171; }
+
+        /* ── FILE DROP ── */
+        .file-drop {
+            border: 1.5px dashed var(--border2);
+            border-radius: var(--radius);
+            padding: 22px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            background: var(--bg);
+        }
+        .file-drop:hover, .file-drop.dragover { border-color: #f97316; background: rgba(249,115,22,0.05); }
+        .file-drop-icon { font-size: 26px; margin-bottom: 6px; }
+        .file-drop-text { font-size: 13px; color: var(--text); font-weight: 600; }
+        .file-drop-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+        #fileInput { display: none; }
+        .file-selected { display: none; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); font-size: 12px; }
+        .file-selected.visible { display: flex; }
+        .file-selected-name { font-family: 'JetBrains Mono', monospace; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-remove { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; }
+        .file-remove:hover { color: #f87171; }
+        .preview-table-wrap { margin-top: 12px; max-height: 220px; overflow: auto; border: 1px solid var(--border2); border-radius: var(--radius); }
+        table.preview-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+        table.preview-table th { text-align: left; padding: 7px 10px; background: var(--surface2); color: var(--text-dim); font-weight: 700; font-size: 10px; text-transform: uppercase; position: sticky; top: 0; letter-spacing: 0.5px; }
+        table.preview-table td { padding: 6px 10px; border-top: 1px solid var(--border); color: var(--text-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        table.preview-table td.col-article { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+        table.preview-table td.col-name { color: var(--text); }
+        table.preview-table tr:hover td { background: rgba(255,255,255,0.02); }
+        #fileStatus { font-size: 12px; color: var(--text-muted); min-height: 16px; font-family: 'JetBrains Mono', monospace; margin-top: 10px; }
+        #fileStatus.ok  { color: var(--green); }
+        #fileStatus.err { color: #f87171; }
+
+        /* ── AUTO PROGRESS ── */
+        #autoProgress {
+            display: none;
+            background: var(--surface);
+            border: 1px solid rgba(192,132,252,0.3);
+            border-radius: 12px;
+            padding: 16px 18px;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #autoProgress.visible { display: flex; }
+        .ap-header { display: flex; align-items: center; justify-content: space-between; }
+        .ap-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--violet); text-transform: uppercase; letter-spacing: 1px; }
+        .ap-cancel { font-size: 11px; color: var(--text-dim); background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; transition: color 0.15s; }
+        .ap-cancel:hover { color: #f87171; }
+        .ap-steps { display: flex; flex-direction: column; gap: 6px; }
+        .ap-step { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); transition: color 0.2s; }
+        .ap-step.active { color: var(--text); }
+        .ap-step.done   { color: var(--green); }
+        .ap-step.error  { color: #f87171; }
+        .ap-dot {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: var(--surface2); border: 1px solid var(--border2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 700; flex-shrink: 0; color: var(--text-dim);
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+        .ap-step.active .ap-dot { background: rgba(192,132,252,0.15); border-color: var(--violet); color: var(--violet); animation: pulse-dot 1.2s linear infinite; }
+        .ap-step.done  .ap-dot { background: rgba(61,220,132,0.15);  border-color: var(--green);  color: var(--green); }
+        .ap-step.error .ap-dot { background: rgba(248,113,113,0.15); border-color: #f87171; color: #f87171; }
+        @keyframes pulse-dot {
+            0%   { box-shadow: 0 0 0 0 rgba(192,132,252,0.4); }
+            50%  { box-shadow: 0 0 0 4px rgba(192,132,252,0.1); }
+            100% { box-shadow: 0 0 0 0 rgba(192,132,252,0); }
+        }
+        .ap-bar-wrap { height: 4px; background: var(--border2); border-radius: 4px; overflow: hidden; }
+        .ap-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #c084fc, #7c3aed); border-radius: 4px; transition: width 0.5s ease; }
+        .ap-msg { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; min-height: 14px; }
+
+        /* ── BATCH PROGRESS ── */
+        #batchProgress {
+            display: none;
+            background: var(--surface);
+            border: 1px solid rgba(249,115,22,0.3);
+            border-radius: 12px;
+            padding: 16px 18px;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #batchProgress.visible { display: flex; }
+        .bp-header { display: flex; align-items: center; justify-content: space-between; }
+        .bp-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: #f97316; text-transform: uppercase; letter-spacing: 1px; }
+        .bp-overall-bar-wrap { height: 4px; background: var(--border2); border-radius: 4px; overflow: hidden; }
+        .bp-overall-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #f97316, #c2410c); border-radius: 4px; transition: width 0.4s ease; }
+        .bp-overall-label { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .bp-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+        .bp-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; font-size: 12px; }
+        .bp-item.active { border-color: var(--violet); background: rgba(192,132,252,0.06); }
+        .bp-item.done   { border-color: rgba(61,220,132,0.35); }
+        .bp-item.error  { border-color: rgba(248,113,113,0.4); }
+        .bp-item-dot {
+            width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+            background: var(--bg); border: 1px solid var(--border2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 700; color: var(--text-dim);
+        }
+        .bp-item.active .bp-item-dot { border-color: var(--violet); color: var(--violet); animation: pulse-dot 1.2s linear infinite; }
+        .bp-item.done   .bp-item-dot { border-color: var(--green); color: var(--green); }
+        .bp-item.error  .bp-item-dot { border-color: #f87171; color: #f87171; }
+        .bp-item-url { flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bp-item-stage { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+        .bp-item.done  .bp-item-stage { color: var(--green); }
+        .bp-item.error .bp-item-stage { color: #f87171; }
+        .bp-item-article { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); white-space: nowrap; }
 
         #status {
             font-size: 12px; color: var(--text-muted);
@@ -373,7 +520,7 @@
             </div>
             <div class="guide-step">
                 <div class="step-num">3</div>
-                <div class="step-body"><h4>Створіть опис</h4><p>«Створити» — з брендом. «БЕЗ БРЕНДА» — без згадки бренду. AI також витягне артикул.</p></div>
+                <div class="step-body"><h4>Створіть опис</h4><p>«Створити» — AI згенерує опис і також витягне артикул.</p></div>
             </div>
             <div class="guide-step">
                 <div class="step-num">4</div>
@@ -387,11 +534,16 @@
                 <div class="step-num">6</div>
                 <div class="step-body"><h4>Збережіть в таблицю</h4><p>Кнопка «📊 В таблицю» запише всі дані разом з артикулом.</p></div>
             </div>
+            <div class="guide-step">
+                <div class="step-num">7</div>
+                <div class="step-body"><h4>📦 Список або 📁 файл</h4><p>Обробіть одразу кілька товарів — посиланнями або файлом XLS/CSV.</p></div>
+            </div>
         </div>
         <div class="guide-tip">
             <div class="tip-label">💡 Поради</div>
             <p>Товар має бути публічно доступний (без авторизації).</p>
             <p>Запити захищені та обробляються на сервері.</p>
+            <p>В пакетному режимі примітки застосовуються до всіх товарів.</p>
         </div>
     </aside>
 
@@ -399,33 +551,109 @@
 
         <div class="page-head">
             <h1>Генератор описаній товарів</h1>
-            <p>HTML-опис · SEO-ключі · Покращена назва · УКР + РУС</p>
+            <p>HTML-опис · SEO-ключі · Покращена назва · УКР + РУС · Авто · Пакет · Файл</p>
         </div>
 
         <div class="card">
-            <div class="card-label">Посилання на товар</div>
-            <div class="input-row">
-                <input type="text" id="link" placeholder="https://prom.ua/p1234567890-tovar.html">
+            <div class="mode-tabs">
+                <div class="mode-tab active" id="tabSingle" onclick="switchMode('single')">🔗 Один товар</div>
+                <div class="mode-tab" id="tabBatch"  onclick="switchMode('batch')">📦 Список посилань</div>
+                <div class="mode-tab" id="tabFile"   onclick="switchMode('file')">📁 Файл (XLS/CSV)</div>
             </div>
 
-            <div class="article-badge" id="articleBadge">
-                <span class="article-badge-label">Артикул</span>
-                <span class="article-badge-value" id="articleValue">—</span>
+            <!-- ─── Один товар ─── -->
+            <div class="mode-panel active" id="panelSingle">
+                <div class="card-label">Посилання на товар</div>
+                <div class="input-row">
+                    <input type="text" id="link" placeholder="https://prom.ua/p1234567890-tovar.html">
+                </div>
+
+                <div class="article-badge" id="articleBadge">
+                    <span class="article-badge-label">Артикул</span>
+                    <span class="article-badge-value" id="articleValue">—</span>
+                </div>
+
+                <div class="action-row">
+                    <button class="btn btn-auto"    id="autoBtn"    onclick="runAuto()">⚡ Авто</button>
+                    <button class="btn btn-primary" id="genBtn"      onclick="generate()">✨ Створити опис</button>
+                    <button class="btn btn-seo"     id="seoBtn"      onclick="generateSEO()"  disabled>🔑 SEO-ключі</button>
+                    <button class="btn btn-name"    id="nameBtn"     onclick="generateName()" disabled>✦ Назва</button>
+                    <button class="btn btn-sheets"  id="saveBtn"     onclick="saveToSheets()" disabled>📊 В таблицю</button>
+                    <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
+                       target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
+                </div>
+                <div id="status"></div>
             </div>
 
-            <div class="action-row">
-                <button class="btn btn-primary" id="genBtn"      onclick="generate(false)">✨ Створити опис</button>
-                <button class="btn btn-nobrand" id="noBrandBtn"  onclick="generate(true)">🚫 БЕЗ БРЕНДА</button>
-                <button class="btn btn-seo"     id="seoBtn"      onclick="generateSEO()"  disabled>🔑 SEO-ключі</button>
-                <button class="btn btn-name"    id="nameBtn"     onclick="generateName()" disabled>✦ Назва</button>
-                <button class="btn btn-sheets"  id="saveBtn"     onclick="saveToSheets()" disabled>📊 В таблицю</button>
-                <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
-                   target="_blank" class="btn"
-                   style="background:var(--surface2);color:var(--text-muted);border:1px solid var(--border2);text-decoration:none;">
-                    📋 Відкрити таблицю
-                </a>
+            <!-- ─── Список посилань ─── -->
+            <div class="mode-panel" id="panelBatch">
+                <div class="card-label">Список посилань (кожне з нового рядка)</div>
+                <textarea id="batchLinks" placeholder="https://prom.ua/product-1&#10;https://prom.ua/product-2&#10;https://prom.ua/product-3"></textarea>
+                <div class="batch-hint" id="batchCount">0 посилань у списку</div>
+                <div class="action-row">
+                    <button class="btn btn-batch" id="batchBtn" onclick="runBatch()">📦 Обробити всі товари</button>
+                    <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
+                       target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
+                </div>
+                <div id="batchStatus"></div>
             </div>
-            <div id="status"></div>
+
+            <!-- ─── Файл ─── -->
+            <div class="mode-panel" id="panelFile">
+                <div class="card-label">Файл зі списком товарів (.xls, .xlsx, .csv)</div>
+                <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+                    <div class="file-drop-icon">📁</div>
+                    <div class="file-drop-text">Натисніть або перетягніть файл сюди</div>
+                    <div class="file-drop-hint">Колонки: Артикул, Найменування/Назва, РРЦ, Опис (необов'язково)</div>
+                </div>
+                <input type="file" id="fileInput" accept=".xls,.xlsx,.csv" onchange="onFileSelected(event)">
+                <div class="file-selected" id="fileSelected">
+                    <span>📄</span>
+                    <span class="file-selected-name" id="fileSelectedName"></span>
+                    <button class="file-remove" onclick="clearFile()">✕</button>
+                </div>
+                <div class="batch-hint" id="fileCount" style="display:none;"></div>
+                <div class="preview-table-wrap" id="filePreviewWrap" style="display:none;">
+                    <table class="preview-table">
+                        <thead><tr><th>Артикул</th><th>Найменування</th><th>РРЦ</th><th>Опис (джерело)</th></tr></thead>
+                        <tbody id="filePreviewBody"></tbody>
+                    </table>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-batch" id="fileBtn" onclick="runFileBatch()" disabled>📁 Обробити товари з файлу</button>
+                    <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
+                       target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
+                </div>
+                <div id="fileStatus"></div>
+            </div>
+        </div>
+
+        <!-- ── АВТО ПРОГРЕС ── -->
+        <div id="autoProgress">
+            <div class="ap-header">
+                <span class="ap-title">⚡ Авто-режим</span>
+                <button class="ap-cancel" id="apCancelBtn" onclick="cancelAuto()">✕ Скасувати</button>
+            </div>
+            <div class="ap-steps">
+                <div class="ap-step" id="apStep0"><div class="ap-dot" id="apDot0">1</div><span>Парсинг сторінки товару</span></div>
+                <div class="ap-step" id="apStep1"><div class="ap-dot" id="apDot1">2</div><span>Опис УКР + РУС (HTML)</span></div>
+                <div class="ap-step" id="apStep2"><div class="ap-dot" id="apDot2">3</div><span>SEO-ключі УКР + РУС</span></div>
+                <div class="ap-step" id="apStep3"><div class="ap-dot" id="apDot3">4</div><span>Покращення найменування</span></div>
+                <div class="ap-step" id="apStep4"><div class="ap-dot" id="apDot4">5</div><span>Збереження до таблиці</span></div>
+            </div>
+            <div class="ap-bar-wrap"><div class="ap-bar" id="apBar"></div></div>
+            <div class="ap-msg" id="apMsg"></div>
+        </div>
+
+        <!-- ── ПАКЕТНИЙ ПРОГРЕС ── -->
+        <div id="batchProgress">
+            <div class="bp-header">
+                <span class="bp-title">📦 Пакетна обробка</span>
+                <button class="ap-cancel" id="bpCancelBtn" onclick="cancelBatch()">✕ Скасувати</button>
+            </div>
+            <div class="bp-overall-label" id="bpOverallLabel">0 / 0 товарів оброблено</div>
+            <div class="bp-overall-bar-wrap"><div class="bp-overall-bar" id="bpOverallBar"></div></div>
+            <div class="bp-list" id="bpList"></div>
         </div>
 
         <!-- NOTES -->
@@ -526,7 +754,7 @@
             </div>
         </div>
 
-        <div class="foot-note">Всі поля лише для читання — використовуйте кнопку «Скопіювати» в кожному блоці.</div>
+        <div class="foot-note">Всі поля лише для читання — використовуйте кнопку «Скопіювати» в кожному блоці. У пакетному режимі показується останній оброблений товар, всі записуються до таблиці автоматично.</div>
     </main>
 </div>
 
@@ -553,13 +781,49 @@ const TREELAND_STYLES = `<style type="text/css">
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let currentArticle = '';
 let _noBrandMode   = false;
+let autoCancelled  = false;
+let batchCancelled = false;
+let fileRows       = [];
+
+// ─── MODE TABS ─────────────────────────────────────────────────────────────────
+function switchMode(mode) {
+    ['single','batch','file'].forEach(m => {
+        document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
+        document.getElementById('panel' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const ta = document.getElementById('batchLinks');
+    if (ta) ta.addEventListener('input', () => {
+        const urls = parseBatchLinks(ta.value);
+        document.getElementById('batchCount').textContent = urls.length + ' посилань у списку';
+    });
+    // drag-drop for file
+    const drop = document.getElementById('fileDrop');
+    if (drop) {
+        drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('dragover'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+        drop.addEventListener('drop', e => {
+            e.preventDefault(); drop.classList.remove('dragover');
+            const f = e.dataTransfer.files[0];
+            if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; onFileSelected({ target: { files: [f] } }); }
+        });
+    }
+});
+
+function parseBatchLinks(raw) {
+    return raw.split('\n').map(s => s.trim()).filter(s => s.length > 0 && s.startsWith('http'));
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-function setStatus(msg, type) {
-    const el = document.getElementById('status');
-    el.textContent = msg;
-    el.className = type || '';
-}
+function setStatus(msg, type)      { const el = document.getElementById('status');      el.textContent = msg; el.className = type || ''; }
+function setBatchStatus(msg, type) { const el = document.getElementById('batchStatus'); el.textContent = msg; el.className = type || ''; }
+function setFileStatus(msg, type)  { const el = document.getElementById('fileStatus');  el.textContent = msg; el.className = type || ''; }
 function showBlock(id) { const el = document.getElementById(id); if (el) el.classList.add('visible'); }
 function hideBlock(id) { const el = document.getElementById(id); if (el) el.classList.remove('visible'); }
 
@@ -569,6 +833,38 @@ function showArticle(value) {
     const val   = document.getElementById('articleValue');
     if (currentArticle) { val.textContent = currentArticle; badge.classList.add('visible'); }
     else { badge.classList.remove('visible'); }
+}
+
+function lockAll(lock) {
+    ['autoBtn','genBtn','seoBtn','nameBtn','saveBtn','batchBtn','fileBtn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = lock;
+    });
+}
+
+function clearResults() {
+    ['blockUA','blockRU','blockSEO-UA','blockSEO-RU','blockNameUA','blockNameRU'].forEach(hideBlock);
+    document.getElementById('nameSectionHeader').classList.remove('visible');
+    ['resUA','resRU','seoUA','seoRU','nameUA','nameRU'].forEach(id => { document.getElementById(id).value = ''; });
+    showArticle('');
+}
+
+function showLastResultInMainFields(res) {
+    document.getElementById('resUA').value  = res.descUA || '';
+    document.getElementById('resRU').value  = res.descRU || '';
+    document.getElementById('seoUA').value  = res.seoUA  || '';
+    document.getElementById('seoRU').value  = res.seoRU  || '';
+    document.getElementById('nameUA').value = res.nameUA || '';
+    document.getElementById('nameRU').value = res.nameRU || '';
+    showArticle(res.article);
+    if (res.descUA) showBlock('blockUA');
+    if (res.descRU) showBlock('blockRU');
+    if (res.seoUA)  showBlock('blockSEO-UA');
+    if (res.seoRU)  showBlock('blockSEO-RU');
+    if (res.nameUA || res.nameRU) {
+        document.getElementById('nameSectionHeader').classList.add('visible');
+        showBlock('blockNameUA'); showBlock('blockNameRU');
+    }
 }
 
 function extractArticle(pageText) {
@@ -778,50 +1074,385 @@ RU: [назва російською]
 Жодних пояснень, лише два рядки.`;
 }
 
+function buildSourceTextFromRow(row) {
+    let txt = `Назва товару: ${row.name}\n`;
+    if (row.price) txt += `Ціна: ${row.price}\n`;
+    if (row.description) txt += `\nОпис з прайсу:\n${row.description}`;
+    else txt += `\n(Додаткового опису немає — використовуй лише назву товару та її компоненти, не вигадуй характеристики яких немає в назві.)`;
+    return txt;
+}
+
+// ─── AUTO PROGRESS UI ─────────────────────────────────────────────────────────
+function apShow()  { document.getElementById('autoProgress').classList.add('visible'); }
+function apHide()  { document.getElementById('autoProgress').classList.remove('visible'); }
+function apSetStep(idx, state) {
+    const step = document.getElementById('apStep' + idx);
+    const dot  = document.getElementById('apDot' + idx);
+    step.className = 'ap-step ' + (state || '');
+    dot.textContent = state === 'done' ? '✓' : state === 'error' ? '✕' : String(idx + 1);
+}
+function apSetBar(pct) { document.getElementById('apBar').style.width = pct + '%'; }
+function apSetMsg(msg) { document.getElementById('apMsg').textContent = msg; }
+function apReset() { for (let i = 0; i < 5; i++) apSetStep(i, ''); apSetBar(0); apSetMsg(''); }
+function cancelAuto() { autoCancelled = true; apSetMsg('⛔ Скасовано користувачем'); document.getElementById('apCancelBtn').disabled = true; }
+
+// ─── BATCH PROGRESS UI ───────────────────────────────────────────────────────
+function bpShow() { document.getElementById('batchProgress').classList.add('visible'); }
+function bpHide() { document.getElementById('batchProgress').classList.remove('visible'); }
+
+function bpRenderList(labels) {
+    const list = document.getElementById('bpList');
+    list.innerHTML = '';
+    labels.forEach((label, i) => {
+        const item = document.createElement('div');
+        item.className = 'bp-item';
+        item.id = 'bpItem' + i;
+        item.innerHTML = `
+            <div class="bp-item-dot" id="bpDot${i}">${i + 1}</div>
+            <div class="bp-item-url" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+            <div class="bp-item-article" id="bpArticle${i}"></div>
+            <div class="bp-item-stage" id="bpStage${i}">в очікуванні</div>`;
+        list.appendChild(item);
+    });
+}
+
+function bpSetItem(i, state, stageText, article) {
+    const item  = document.getElementById('bpItem' + i);
+    const dot   = document.getElementById('bpDot' + i);
+    const stage = document.getElementById('bpStage' + i);
+    const art   = document.getElementById('bpArticle' + i);
+    item.className = 'bp-item ' + (state || '');
+    dot.textContent = state === 'done' ? '✓' : state === 'error' ? '✕' : String(i + 1);
+    if (stageText) stage.textContent = stageText;
+    if (article)   art.textContent   = article;
+}
+
+function bpSetOverall(done, total) {
+    document.getElementById('bpOverallLabel').textContent = `${done} / ${total} товарів оброблено`;
+    document.getElementById('bpOverallBar').style.width = (total ? (done / total * 100) : 0) + '%';
+}
+
+function cancelBatch() {
+    batchCancelled = true;
+    setBatchStatus('⛔ Скасовується після поточного товару...', '');
+    document.getElementById('bpCancelBtn').disabled = true;
+}
+
+const STAGE_LABELS = ['Парсинг', 'Опис УКР/РУС', 'SEO-ключі', 'Назва', 'Запис у таблицю'];
+
+// ─── CORE: ОБРОБКА ОДНОГО ТОВАРУ (TreeLand) ──────────────────────────────────
+async function processProduct(source, managerNotes, noBrand, onStage, isCancelled) {
+    const isUrl = typeof source === 'string';
+    const url   = isUrl ? source : (source.label || '');
+    const result = { ok: false, article: '', url, nameUA: '', nameRU: '', descUA: '', descRU: '', seoUA: '', seoRU: '' };
+
+    let pageText;
+    if (isUrl) {
+        onStage(0, 'active', '⏳ Завантажую сторінку товару...');
+        pageText = await fetchPageText(url);
+        if (isCancelled()) { result.error = 'cancelled'; return result; }
+        if (!pageText) { onStage(0, 'error', '❌ Не вдалося прочитати сторінку'); result.error = 'fetch_failed'; return result; }
+        onStage(0, 'done');
+        result.article = extractArticle(pageText);
+    } else {
+        onStage(0, 'active', '⏳ Готую дані з файлу...');
+        pageText = source.text;
+        result.article = source.article || '—';
+        onStage(0, 'done');
+    }
+
+    // Опис УКР
+    onStage(1, 'active', '⏳ Генерую HTML-опис (УКР)...');
+    const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, noBrand));
+    if (isCancelled()) { result.error = 'cancelled'; return result; }
+    if (!ua.ok) { onStage(1, 'error', '❌ Помилка генерації УКР'); result.error = 'desc_ua_failed'; return result; }
+
+    // Опис РУС
+    onStage(1, 'active', '⏳ Генерую опис (РУС)...');
+    const ru = await callServer(buildPrompt(pageText, 'russian', managerNotes, noBrand));
+    if (isCancelled()) { result.error = 'cancelled'; return result; }
+    if (!ru.ok) { onStage(1, 'error', '❌ Помилка генерації РУС'); result.error = 'desc_ru_failed'; return result; }
+
+    result.descUA = TREELAND_STYLES + ua.text;
+    result.descRU = TREELAND_STYLES + ru.text;
+    onStage(1, 'done');
+
+    // SEO УКР
+    onStage(2, 'active', '⏳ Генерую SEO-ключі (УКР)...');
+    const seoUa = await callServer(buildSEOPrompt(ua.text, 'ua', noBrand));
+    if (isCancelled()) { result.error = 'cancelled'; return result; }
+    if (seoUa.ok) result.seoUA = seoUa.text;
+
+    // SEO РУС
+    onStage(2, 'active', '⏳ Генерую SEO-ключі (РУС)...');
+    const seoRu = await callServer(buildSEOPrompt(ru.text, 'ru', noBrand));
+    if (isCancelled()) { result.error = 'cancelled'; return result; }
+    if (seoRu.ok) result.seoRU = seoRu.text;
+    onStage(2, 'done');
+
+    // Назва
+    onStage(3, 'active', '⏳ Генерую найменування...');
+    const nameRes = await callServer(buildNamePrompt(ua.text, ru.text, result.seoUA, result.seoRU));
+    if (isCancelled()) { result.error = 'cancelled'; return result; }
+    if (nameRes.ok) {
+        const lines = nameRes.text.split('\n');
+        result.nameUA = (lines.find(l => l.startsWith('UA:')) || '').replace('UA:', '').trim().replace(/["«»""]/g, '');
+        result.nameRU = (lines.find(l => l.startsWith('RU:')) || '').replace('RU:', '').trim().replace(/["«»""]/g, '');
+        onStage(3, 'done');
+    } else {
+        onStage(3, 'error', '⚠️ Помилка генерації назви');
+    }
+
+    // Збереження
+    onStage(4, 'active', '⏳ Зберігаю до Google Таблиці...');
+    try {
+        await fetch(SHEETS_URL, {
+            method: 'POST', mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+                article: result.article, url,
+                nameUA: result.nameUA, nameRU: result.nameRU,
+                descUA: result.descUA, descRU: result.descRU,
+                seoUA:  result.seoUA,  seoRU:  result.seoRU,
+            })
+        });
+        onStage(4, 'done');
+    } catch (e) { onStage(4, 'error', '⚠️ Помилка запису до таблиці'); }
+
+    result.ok = true;
+    return result;
+}
+
+// ─── АВТО-РЕЖИМ (одиночний товар) ────────────────────────────────────────────
+async function runAuto() {
+    const url = document.getElementById('link').value.trim();
+    if (!url)                   { setStatus('⚠️ Вставте посилання на товар!', 'err'); return; }
+    if (!url.startsWith('http')){ setStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
+
+    autoCancelled = false;
+    lockAll(true);
+    apReset(); apShow();
+    document.getElementById('apCancelBtn').disabled = false;
+    clearResults(); setStatus('');
+
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+
+    const onStage = (idx, state, msg) => {
+        apSetStep(idx, state);
+        if (msg) apSetMsg(msg);
+        apSetBar(Math.min(100, (idx + (state === 'done' ? 1 : 0.4)) * 20));
+    };
+
+    const res = await processProduct(url, managerNotes, false, onStage, () => autoCancelled);
+
+    if (autoCancelled) { apSetMsg('⛔ Авто-режим скасовано'); setStatus('⛔ Скасовано.', ''); lockAll(false); return; }
+    if (!res.ok) { setStatus('❌ Помилка обробки товару: ' + (res.error || 'unknown'), 'err'); lockAll(false); return; }
+
+    showLastResultInMainFields(res);
+    apSetMsg('✅ Все готово! Дані збережено до таблиці.');
+    setStatus(`✅ Авто-режим завершено! Артикул: ${res.article}`, 'ok');
+    lockAll(false);
+    document.getElementById('seoBtn').disabled  = false;
+    document.getElementById('nameBtn').disabled = false;
+    document.getElementById('saveBtn').disabled = false;
+}
+
+// ─── ПАКЕТНА ОБРОБКА — СПИСОК URL ────────────────────────────────────────────
+async function runBatch() {
+    const raw  = document.getElementById('batchLinks').value;
+    const urls = parseBatchLinks(raw);
+    if (!urls.length) { setBatchStatus('⚠️ Додайте хоча б одне коректне посилання!', 'err'); return; }
+
+    batchCancelled = false;
+    lockAll(true);
+    document.getElementById('bpCancelBtn').disabled = false;
+    bpRenderList(urls); bpSetOverall(0, urls.length); bpShow();
+    setBatchStatus(`⏳ Обробка ${urls.length} товарів...`, '');
+
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+    let done = 0, errors = 0, lastOk = null;
+
+    for (let i = 0; i < urls.length; i++) {
+        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+        bpSetItem(i, 'active', 'старт...');
+        const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
+        const res = await processProduct(urls[i], managerNotes, false, onStage, () => batchCancelled);
+        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; }
+        else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
+        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; }
+        bpSetOverall(i + 1, urls.length);
+        if (!batchCancelled && i < urls.length - 1) await new Promise(r => setTimeout(r, 1500));
+    }
+
+    if (lastOk) showLastResultInMainFields(lastOk);
+    if (batchCancelled)   setBatchStatus(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, '');
+    else if (!errors)     setBatchStatus(`✅ Готово! Усі ${done} товарів оброблено та збережено.`, 'ok');
+    else                  setBatchStatus(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, '');
+    lockAll(false);
+}
+
+// ─── ПАКЕТНА ОБРОБКА — ФАЙЛ ──────────────────────────────────────────────────
+async function runFileBatch() {
+    if (!fileRows.length) { setFileStatus('⚠️ Спочатку завантажте файл з товарами!', 'err'); return; }
+
+    batchCancelled = false;
+    lockAll(true);
+    document.getElementById('bpCancelBtn').disabled = false;
+
+    const items = fileRows.map(r => ({
+        type: 'text',
+        article: r.article,
+        text:    buildSourceTextFromRow(r),
+        label:   (r.article !== '—' ? r.article + ' — ' : '') + r.name
+    }));
+
+    bpRenderList(items.map(it => it.label));
+    bpSetOverall(0, items.length); bpShow();
+    setFileStatus(`⏳ Обробка ${items.length} товарів з файлу...`, '');
+
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+    let done = 0, errors = 0, lastOk = null;
+
+    for (let i = 0; i < items.length; i++) {
+        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+        bpSetItem(i, 'active', 'старт...');
+        const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
+        const res = await processProduct(items[i], managerNotes, false, onStage, () => batchCancelled);
+        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; }
+        else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
+        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; }
+        bpSetOverall(i + 1, items.length);
+        if (!batchCancelled && i < items.length - 1) await new Promise(r => setTimeout(r, 1500));
+    }
+
+    if (lastOk) showLastResultInMainFields(lastOk);
+    if (batchCancelled)   setFileStatus(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
+    else if (!errors)     setFileStatus(`✅ Готово! Усі ${done} товарів з файлу оброблено та збережено.`, 'ok');
+    else                  setFileStatus(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
+    lockAll(false);
+}
+
+// ─── FILE IMPORT ──────────────────────────────────────────────────────────────
+function onFileSelected(evt) {
+    const file = evt.target.files[0];
+    if (!file) return;
+    document.getElementById('fileSelected').classList.add('visible');
+    document.getElementById('fileSelectedName').textContent = file.name;
+    setFileStatus('⏳ Читаю файл...', '');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data     = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+            const rows     = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            fileRows = parseFileRows(rows);
+            renderFilePreview(fileRows);
+            document.getElementById('fileBtn').disabled = fileRows.length === 0;
+            document.getElementById('fileCount').style.display = 'block';
+            document.getElementById('fileCount').textContent = fileRows.length + ' товарів знайдено у файлі';
+            setFileStatus(fileRows.length ? '✅ Файл прочитано. Перевірте перегляд нижче.' : '⚠️ Не знайдено жодного рядка з назвою товару.', fileRows.length ? 'ok' : 'err');
+        } catch (err) { setFileStatus('❌ Помилка читання файлу: ' + err.message, 'err'); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function clearFile() {
+    fileRows = [];
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileSelected').classList.remove('visible');
+    document.getElementById('fileCount').style.display = 'none';
+    document.getElementById('filePreviewWrap').style.display = 'none';
+    document.getElementById('fileBtn').disabled = true;
+    setFileStatus('', '');
+}
+
+function parseFileRows(rows) {
+    if (!rows.length) return [];
+    let headerRowIdx = -1, colMap = {};
+    const wanted = {
+        article: ['артикул', 'sku', 'код'],
+        name:    ['наименование', 'найменування', 'назва', 'название', 'name'],
+        price:   ['ррц', 'цена', 'ціна', 'price'],
+        desc:    ['описание', 'опис', 'description']
+    };
+    for (let r = 0; r < Math.min(rows.length, 10); r++) {
+        const row = rows[r].map(c => String(c || '').toLowerCase().trim());
+        let matches = 0; const tempMap = {};
+        row.forEach((cell, idx) => {
+            for (const key in wanted) { if (wanted[key].some(w => cell.includes(w))) { tempMap[key] = idx; matches++; } }
+        });
+        if (matches >= 2) { headerRowIdx = r; colMap = tempMap; break; }
+    }
+    if (headerRowIdx === -1) return [];
+    const result = [];
+    for (let r = headerRowIdx + 1; r < rows.length; r++) {
+        const row  = rows[r]; if (!row || !row.length) continue;
+        const name = colMap.name !== undefined ? String(row[colMap.name] ?? '').trim() : '';
+        if (!name) continue;
+        result.push({
+            article:     colMap.article !== undefined ? String(row[colMap.article] ?? '').trim() : '—',
+            name,
+            price:       colMap.price !== undefined ? String(row[colMap.price] ?? '').trim() : '',
+            description: colMap.desc  !== undefined ? String(row[colMap.desc]  ?? '').trim() : '',
+        });
+    }
+    return result;
+}
+
+function renderFilePreview(rows) {
+    const wrap = document.getElementById('filePreviewWrap');
+    const body = document.getElementById('filePreviewBody');
+    if (!rows.length) { wrap.style.display = 'none'; return; }
+    body.innerHTML = rows.map(r => `
+        <tr>
+            <td class="col-article">${escapeHtml(r.article)}</td>
+            <td class="col-name">${escapeHtml(r.name)}</td>
+            <td>${escapeHtml(r.price)}</td>
+            <td>${escapeHtml(r.description)}</td>
+        </tr>`).join('');
+    wrap.style.display = 'block';
+}
+
 // ─── GENERATE ─────────────────────────────────────────────────────────────────
-async function generate(noBrand) {
+async function generate() {
     const url = document.getElementById('link').value.trim();
     if (!url) { setStatus('⚠️ Вставте посилання на товар!', 'err'); return; }
     if (!url.startsWith('http')) { setStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
 
-    _noBrandMode = noBrand;
     const managerNotes = document.getElementById('managerNotes').value.trim();
-    const modeLabel = noBrand ? ' [БЕЗ БРЕНДА]' : '';
 
     document.getElementById('genBtn').disabled     = true;
-    document.getElementById('noBrandBtn').disabled = true;
+    document.getElementById('autoBtn').disabled    = true;
     document.getElementById('seoBtn').disabled     = true;
     document.getElementById('nameBtn').disabled    = true;
     document.getElementById('saveBtn').disabled    = true;
-    ['blockUA','blockRU','blockSEO-UA','blockSEO-RU','blockNameUA','blockNameRU'].forEach(hideBlock);
-    document.getElementById('nameSectionHeader').classList.remove('visible');
-    ['resUA','resRU','seoUA','seoRU','nameUA','nameRU'].forEach(id => document.getElementById(id).value = '');
-    showArticle('');
+    clearResults();
 
     setStatus('⏳ Парсинг сторінки товару...', '');
     const pageText = await fetchPageText(url);
     if (!pageText) {
         setStatus('❌ Не вдалося зчитати дані з сайту.', 'err');
         document.getElementById('genBtn').disabled     = false;
-        document.getElementById('noBrandBtn').disabled = false;
+        document.getElementById('autoBtn').disabled    = false;
         return;
     }
 
     showArticle(extractArticle(pageText));
-    setStatus(`⏳ Генерую УКР опис${modeLabel}...`, '');
+    setStatus('⏳ Генерую УКР опис...', '');
 
-    const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, noBrand));
+    const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, false));
     if (ua.ok) {
         document.getElementById('resUA').value = TREELAND_STYLES + ua.text;
         showBlock('blockUA');
-        setStatus(`⏳ Перекладаю на РУС${modeLabel}...`, '');
+        setStatus('⏳ Перекладаю на РУС...', '');
 
-        const ru = await callServer(buildTranslatePrompt(ua.text, noBrand));
+        const ru = await callServer(buildTranslatePrompt(ua.text, false));
         if (ru.ok) {
             document.getElementById('resRU').value = TREELAND_STYLES + ru.text;
             showBlock('blockRU');
             document.getElementById('seoBtn').disabled = false;
-            setStatus(`✅ Описи готові${modeLabel}! Артикул: ${currentArticle}. Наступний крок — SEO-ключі.`, 'ok');
+            setStatus(`✅ Описи готові! Артикул: ${currentArticle}. Наступний крок — SEO-ключі.`, 'ok');
         } else {
             setStatus('⚠️ УКР готово, але сталася помилка при генерації РУС.', '');
         }
@@ -830,7 +1461,7 @@ async function generate(noBrand) {
     }
 
     document.getElementById('genBtn').disabled     = false;
-    document.getElementById('noBrandBtn').disabled = false;
+    document.getElementById('autoBtn').disabled    = false;
 }
 
 // ─── SEO ──────────────────────────────────────────────────────────────────────
