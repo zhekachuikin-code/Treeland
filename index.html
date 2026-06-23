@@ -1213,19 +1213,32 @@ function bpSetOverall(done, total) {
 
 function bpHideDownload() { document.getElementById('bpDownloadRow').style.display = 'none'; }
 
+function clampCell(s) {
+    s = s || '';
+    const LIMIT = 32000; // запас від жорсткого ліміту Excel у 32767 символів
+    if (s.length > LIMIT) {
+        return s.slice(0, LIMIT) + '… [обрізано, перевищено ліміт Excel]';
+    }
+    return s;
+}
+
 function downloadBatchResults() {
     if (!batchResultsForExport.length) return;
     const rows = batchResultsForExport.map(r => ({
-        'Артикул':       r.article || '',
-        'URL':           r.url || '',
-        'Назва RU':      r.nameRU || '',
-        'Назва UA':      r.nameUA || '',
-        'SEO-ключі RU':  r.seoRU || '',
-        'SEO-ключі UA':  r.seoUA || '',
-        'Опис RU':       r.descRU || '',
-        'Опис UA':       r.descUA || ''
+        'Артикул':       clampCell(r.article) || '—',
+        'URL':           clampCell(r.url)     || '—',
+        'Назва RU':      clampCell(r.nameRU),
+        'Назва UA':      clampCell(r.nameUA),
+        'SEO-ключі RU':  clampCell(r.seoRU),
+        'SEO-ключі UA':  clampCell(r.seoUA),
+        'Опис RU':       clampCell(r.descRU),
+        'Опис UA':       clampCell(r.descUA)
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+        { wch: 14 }, { wch: 50 }, { wch: 45 }, { wch: 45 },
+        { wch: 60 }, { wch: 60 }, { wch: 80 }, { wch: 80 }
+    ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Результати');
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
