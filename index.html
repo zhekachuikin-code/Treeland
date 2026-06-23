@@ -1216,13 +1216,14 @@ function bpHideDownload() { document.getElementById('bpDownloadRow').style.displ
 function downloadBatchResults() {
     if (!batchResultsForExport.length) return;
     const rows = batchResultsForExport.map(r => ({
-        'Артикул':      r.article || '',
-        'URL':          r.url || '',
-        'Статус':       r.status || '',
-        'Назва UA':     r.nameUA || '',
-        'Назва RU':     r.nameRU || '',
-        'SEO UA':       r.seoUA || '',
-        'SEO RU':       r.seoRU || ''
+        'Артикул':       r.article || '',
+        'URL':           r.url || '',
+        'Назва RU':      r.nameRU || '',
+        'Назва UA':      r.nameUA || '',
+        'SEO-ключі RU':  r.seoRU || '',
+        'SEO-ключі UA':  r.seoUA || '',
+        'Опис RU':       r.descRU || '',
+        'Опис UA':       r.descUA || ''
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
