@@ -654,6 +654,9 @@
             <div class="bp-overall-label" id="bpOverallLabel">0 / 0 товарів оброблено</div>
             <div class="bp-overall-bar-wrap"><div class="bp-overall-bar" id="bpOverallBar"></div></div>
             <div class="bp-list" id="bpList"></div>
+            <div class="action-row" id="bpDownloadRow" style="display:none; margin-top:4px;">
+                <button class="btn btn-sheets" id="bpDownloadBtn" onclick="downloadBatchResults()">⬇️ Скачати результати (XLSX)</button>
+            </div>
         </div>
 
         <!-- NOTES -->
@@ -784,6 +787,7 @@ let _noBrandMode   = false;
 let autoCancelled  = false;
 let batchCancelled = false;
 let fileRows       = [];
+let batchResultsForExport = [];
 
 // ─── MODE TABS ─────────────────────────────────────────────────────────────────
 function switchMode(mode) {
@@ -1207,6 +1211,26 @@ function bpSetOverall(done, total) {
     document.getElementById('bpOverallBar').style.width = (total ? (done / total * 100) : 0) + '%';
 }
 
+function bpHideDownload() { document.getElementById('bpDownloadRow').style.display = 'none'; }
+
+function downloadBatchResults() {
+    if (!batchResultsForExport.length) return;
+    const rows = batchResultsForExport.map(r => ({
+        'Артикул':      r.article || '',
+        'URL':          r.url || '',
+        'Статус':       r.status || '',
+        'Назва UA':     r.nameUA || '',
+        'Назва RU':     r.nameRU || '',
+        'SEO UA':       r.seoUA || '',
+        'SEO RU':       r.seoRU || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Результати');
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
+    XLSX.writeFile(wb, `treeland-results-${stamp}.xlsx`);
+}
+
 function cancelBatch() {
     batchCancelled = true;
     setBatchStatus('⛔ Скасовується після поточного товару...', '');
@@ -1341,25 +1365,27 @@ async function runBatch() {
     batchCancelled = false;
     lockAll(true);
     document.getElementById('bpCancelBtn').disabled = false;
-    bpRenderList(urls); bpSetOverall(0, urls.length); bpShow();
+    bpRenderList(urls); bpSetOverall(0, urls.length); bpShow(); bpHideDownload();
     setBatchStatus(`⏳ Обробка ${urls.length} товарів...`, '');
 
     const managerNotes = document.getElementById('managerNotes').value.trim();
     let done = 0, errors = 0, lastOk = null;
+    batchResultsForExport = [];
 
     for (let i = 0; i < urls.length; i++) {
         if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
         bpSetItem(i, 'active', 'старт...');
         const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
         const res = await processProduct(urls[i], managerNotes, false, onStage, () => batchCancelled);
-        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; }
+        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: '✓ готово' }); }
         else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
-        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; }
+        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
         bpSetOverall(i + 1, urls.length);
         if (!batchCancelled && i < urls.length - 1) await new Promise(r => setTimeout(r, 1500));
     }
 
     if (lastOk) showLastResultInMainFields(lastOk);
+    if (batchResultsForExport.length) document.getElementById('bpDownloadRow').style.display = 'flex';
     if (batchCancelled)   setBatchStatus(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, '');
     else if (!errors)     setBatchStatus(`✅ Готово! Усі ${done} товарів оброблено та збережено.`, 'ok');
     else                  setBatchStatus(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, '');
@@ -1382,25 +1408,27 @@ async function runFileBatch() {
     }));
 
     bpRenderList(items.map(it => it.label));
-    bpSetOverall(0, items.length); bpShow();
+    bpSetOverall(0, items.length); bpShow(); bpHideDownload();
     setFileStatus(`⏳ Обробка ${items.length} товарів з файлу...`, '');
 
     const managerNotes = document.getElementById('managerNotes').value.trim();
     let done = 0, errors = 0, lastOk = null;
+    batchResultsForExport = [];
 
     for (let i = 0; i < items.length; i++) {
         if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
         bpSetItem(i, 'active', 'старт...');
         const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
         const res = await processProduct(items[i], managerNotes, false, onStage, () => batchCancelled);
-        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; }
+        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: '✓ готово' }); }
         else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
-        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; }
+        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
         bpSetOverall(i + 1, items.length);
         if (!batchCancelled && i < items.length - 1) await new Promise(r => setTimeout(r, 1500));
     }
 
     if (lastOk) showLastResultInMainFields(lastOk);
+    if (batchResultsForExport.length) document.getElementById('bpDownloadRow').style.display = 'flex';
     if (batchCancelled)   setFileStatus(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
     else if (!errors)     setFileStatus(`✅ Готово! Усі ${done} товарів з файлу оброблено та збережено.`, 'ok');
     else                  setFileStatus(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
