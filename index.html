@@ -575,7 +575,8 @@
 
                 <div class="action-row">
                     <button class="btn btn-auto"    id="autoBtn"    onclick="runAuto()">⚡ Авто</button>
-                    <button class="btn btn-primary" id="genBtn"      onclick="generate()">✨ Створити опис</button>
+                    <button class="btn btn-primary" id="genBtn"      onclick="generate(false)">✨ Створити опис</button>
+                    <button class="btn btn-nobrand" id="noBrandBtn"  onclick="generate(true)">🚫 БЕЗ БРЕНДА</button>
                     <button class="btn btn-seo"     id="seoBtn"      onclick="generateSEO()"  disabled>🔑 SEO-ключі</button>
                     <button class="btn btn-name"    id="nameBtn"     onclick="generateName()" disabled>✦ Назва</button>
                     <button class="btn btn-sheets"  id="saveBtn"     onclick="saveToSheets()" disabled>📊 В таблицю</button>
@@ -649,7 +650,10 @@
         <div id="batchProgress">
             <div class="bp-header">
                 <span class="bp-title">📦 Пакетна обробка</span>
-                <button class="ap-cancel" id="bpCancelBtn" onclick="cancelBatch()">✕ Скасувати</button>
+                <div style="display:flex; gap:14px; align-items:center;">
+                    <button class="ap-cancel" id="bpPauseBtn" onclick="togglePauseBatch()" style="color:var(--accent)">⏸ Пауза</button>
+                    <button class="ap-cancel" id="bpCancelBtn" onclick="cancelBatch()">✕ Скасувати</button>
+                </div>
             </div>
             <div class="bp-overall-label" id="bpOverallLabel">0 / 0 товарів оброблено</div>
             <div class="bp-overall-bar-wrap"><div class="bp-overall-bar" id="bpOverallBar"></div></div>
@@ -786,6 +790,8 @@ let currentArticle = '';
 let _noBrandMode   = false;
 let autoCancelled  = false;
 let batchCancelled = false;
+let batchPaused       = false;
+let batchPauseResolve = null;
 let fileRows       = [];
 let batchResultsForExport = [];
 
@@ -840,7 +846,7 @@ function showArticle(value) {
 }
 
 function lockAll(lock) {
-    ['autoBtn','genBtn','seoBtn','nameBtn','saveBtn','batchBtn','fileBtn'].forEach(id => {
+    ['autoBtn','genBtn','noBrandBtn','seoBtn','nameBtn','saveBtn','batchBtn','fileBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = lock;
     });
@@ -1247,8 +1253,43 @@ function downloadBatchResults() {
 
 function cancelBatch() {
     batchCancelled = true;
+    // якщо зараз на паузі — розблокуємо, щоб цикл міг вийти
+    if (batchPaused && batchPauseResolve) {
+        batchPaused = false;
+        batchPauseResolve();
+        batchPauseResolve = null;
+    }
     setBatchStatus('⛔ Скасовується після поточного товару...', '');
     document.getElementById('bpCancelBtn').disabled = true;
+    document.getElementById('bpPauseBtn').disabled  = true;
+}
+
+function togglePauseBatch() {
+    batchPaused = !batchPaused;
+    const btn = document.getElementById('bpPauseBtn');
+    if (batchPaused) {
+        btn.textContent = '▶ Продовжити';
+        btn.style.color = 'var(--green)';
+        setBatchStatus('⏸ Пауза після поточного товару...', '');
+    } else {
+        btn.textContent = '⏸ Пауза';
+        btn.style.color = 'var(--accent)';
+        setBatchStatus('▶ Обробка відновлена...', '');
+        if (batchPauseResolve) { batchPauseResolve(); batchPauseResolve = null; }
+    }
+}
+
+async function waitIfPaused() {
+    if (batchPaused) {
+        await new Promise(resolve => { batchPauseResolve = resolve; });
+    }
+}
+
+function bpResetControls() {
+    batchPaused = false; batchPauseResolve = null;
+    const pb = document.getElementById('bpPauseBtn');
+    pb.disabled = false; pb.textContent = '⏸ Пауза'; pb.style.color = 'var(--accent)';
+    document.getElementById('bpCancelBtn').disabled = false;
 }
 
 const STAGE_LABELS = ['Парсинг', 'Опис УКР/РУС', 'SEO-ключі', 'Назва', 'Запис у таблицю'];
@@ -1316,23 +1357,32 @@ async function processProduct(source, managerNotes, noBrand, onStage, isCancelle
         onStage(3, 'error', '⚠️ Помилка генерації назви');
     }
 
-    // Збереження
+    // Збереження з повторними спробами
     onStage(4, 'active', '⏳ Зберігаю до Google Таблиці...');
-    try {
-        await fetch(SHEETS_URL, {
-            method: 'POST', mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({
-                article: result.article, url,
-                nameUA: result.nameUA, nameRU: result.nameRU,
-                descUA: result.descUA, descRU: result.descRU,
-                seoUA:  result.seoUA,  seoRU:  result.seoRU,
-            })
-        });
-        onStage(4, 'done');
-    } catch (e) { onStage(4, 'error', '⚠️ Помилка запису до таблиці'); }
+    const savePayload = JSON.stringify({
+        article: result.article, url,
+        nameUA: result.nameUA, nameRU: result.nameRU,
+        descUA: result.descUA, descRU: result.descRU,
+        seoUA:  result.seoUA,  seoRU:  result.seoRU,
+    });
+    let saveOk = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 2500 * attempt));
+            await fetch(SHEETS_URL, {
+                method: 'POST', mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: savePayload
+            });
+            saveOk = true;
+            break;
+        } catch (e) { /* мережева помилка — спробуємо ще раз */ }
+    }
+    if (saveOk) onStage(4, 'done');
+    else        onStage(4, 'error', '⚠️ Помилка запису до таблиці (перевір XLSX)');
 
-    result.ok = true;
+    result.ok     = true;   // дані оброблено — включаємо до XLSX незалежно
+    result.saveOk = saveOk; // окремий прапор для статусу таблиці
     return result;
 }
 
@@ -1378,7 +1428,7 @@ async function runBatch() {
 
     batchCancelled = false;
     lockAll(true);
-    document.getElementById('bpCancelBtn').disabled = false;
+    bpResetControls();
     bpRenderList(urls); bpSetOverall(0, urls.length); bpShow(); bpHideDownload();
     setBatchStatus(`⏳ Обробка ${urls.length} товарів...`, '');
 
@@ -1388,10 +1438,12 @@ async function runBatch() {
 
     for (let i = 0; i < urls.length; i++) {
         if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+        await waitIfPaused();
+        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
         bpSetItem(i, 'active', 'старт...');
         const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
         const res = await processProduct(urls[i], managerNotes, false, onStage, () => batchCancelled);
-        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: '✓ готово' }); }
+        if (res.ok)                 { const lbl = res.saveOk === false ? '⚠️ не збережено в таблицю' : '✓ готово'; bpSetItem(i, res.saveOk === false ? 'error' : 'done', lbl, res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: lbl }); if (res.saveOk === false) errors++; }
         else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
         else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
         bpSetOverall(i + 1, urls.length);
@@ -1412,7 +1464,7 @@ async function runFileBatch() {
 
     batchCancelled = false;
     lockAll(true);
-    document.getElementById('bpCancelBtn').disabled = false;
+    bpResetControls();
 
     const items = fileRows.map(r => ({
         type: 'text',
@@ -1431,10 +1483,12 @@ async function runFileBatch() {
 
     for (let i = 0; i < items.length; i++) {
         if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+        await waitIfPaused();
+        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
         bpSetItem(i, 'active', 'старт...');
         const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
         const res = await processProduct(items[i], managerNotes, false, onStage, () => batchCancelled);
-        if (res.ok)                 { bpSetItem(i, 'done',  '✓ готово', res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: '✓ готово' }); }
+        if (res.ok)                 { const lbl = res.saveOk === false ? '⚠️ не збережено в таблицю' : '✓ готово'; bpSetItem(i, res.saveOk === false ? 'error' : 'done', lbl, res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: lbl }); if (res.saveOk === false) errors++; }
         else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
         else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
         bpSetOverall(i + 1, items.length);
@@ -1532,14 +1586,17 @@ function renderFilePreview(rows) {
 }
 
 // ─── GENERATE ─────────────────────────────────────────────────────────────────
-async function generate() {
+async function generate(noBrand) {
     const url = document.getElementById('link').value.trim();
     if (!url) { setStatus('⚠️ Вставте посилання на товар!', 'err'); return; }
     if (!url.startsWith('http')) { setStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
 
+    _noBrandMode = noBrand;
     const managerNotes = document.getElementById('managerNotes').value.trim();
+    const modeLabel = noBrand ? ' [БЕЗ БРЕНДА]' : '';
 
     document.getElementById('genBtn').disabled     = true;
+    document.getElementById('noBrandBtn').disabled = true;
     document.getElementById('autoBtn').disabled    = true;
     document.getElementById('seoBtn').disabled     = true;
     document.getElementById('nameBtn').disabled    = true;
@@ -1551,25 +1608,26 @@ async function generate() {
     if (!pageText) {
         setStatus('❌ Не вдалося зчитати дані з сайту.', 'err');
         document.getElementById('genBtn').disabled     = false;
+        document.getElementById('noBrandBtn').disabled = false;
         document.getElementById('autoBtn').disabled    = false;
         return;
     }
 
     showArticle(extractArticle(pageText));
-    setStatus('⏳ Генерую УКР опис...', '');
+    setStatus(`⏳ Генерую УКР опис${modeLabel}...`, '');
 
-    const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, false));
+    const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, noBrand));
     if (ua.ok) {
         document.getElementById('resUA').value = TREELAND_STYLES + ua.text;
         showBlock('blockUA');
-        setStatus('⏳ Перекладаю на РУС...', '');
+        setStatus(`⏳ Перекладаю на РУС${modeLabel}...`, '');
 
-        const ru = await callServer(buildTranslatePrompt(ua.text, false));
+        const ru = await callServer(buildTranslatePrompt(ua.text, noBrand));
         if (ru.ok) {
             document.getElementById('resRU').value = TREELAND_STYLES + ru.text;
             showBlock('blockRU');
             document.getElementById('seoBtn').disabled = false;
-            setStatus(`✅ Описи готові! Артикул: ${currentArticle}. Наступний крок — SEO-ключі.`, 'ok');
+            setStatus(`✅ Описи готові${modeLabel}! Артикул: ${currentArticle}. Наступний крок — SEO-ключі.`, 'ok');
         } else {
             setStatus('⚠️ УКР готово, але сталася помилка при генерації РУС.', '');
         }
@@ -1578,6 +1636,7 @@ async function generate() {
     }
 
     document.getElementById('genBtn').disabled     = false;
+    document.getElementById('noBrandBtn').disabled = false;
     document.getElementById('autoBtn').disabled    = false;
 }
 
