@@ -536,6 +536,10 @@
             </div>
             <div class="guide-step">
                 <div class="step-num">7</div>
+                <div class="step-body"><h4>🗂️ Група товарів</h4><p>Вставте посилання на сторінку групи/категорії — AI знайде назви всіх товарів у групі та напише один узагальнюючий опис на всю групу.</p></div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">8</div>
                 <div class="step-body"><h4>📦 Список або 📁 файл</h4><p>Обробіть одразу кілька товарів — посиланнями або файлом XLS/CSV.</p></div>
             </div>
         </div>
@@ -557,6 +561,7 @@
         <div class="card">
             <div class="mode-tabs">
                 <div class="mode-tab active" id="tabSingle" onclick="switchMode('single')">🔗 Один товар</div>
+                <div class="mode-tab" id="tabGroup"  onclick="switchMode('group')">🗂️ Один опис групи товарів</div>
                 <div class="mode-tab" id="tabBatch"  onclick="switchMode('batch')">📦 Список посилань</div>
                 <div class="mode-tab" id="tabFile"   onclick="switchMode('file')">📁 Файл (XLS/CSV)</div>
             </div>
@@ -584,6 +589,41 @@
                        target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
                 </div>
                 <div id="status"></div>
+            </div>
+
+            <!-- ─── Група товарів ─── -->
+            <div class="mode-panel" id="panelGroup">
+                <div class="card-label">Посилання на сторінку групи/категорії товарів</div>
+                <div class="input-row">
+                    <input type="text" id="groupLink" placeholder="https://prom.ua/ua/c1234567-nazva-grupi.html">
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-primary" id="groupBtn"        onclick="runGroup(false)">🗂️ Написати опис групи</button>
+                    <button class="btn btn-nobrand" id="groupNoBrandBtn" onclick="runGroup(true)">🚫 БЕЗ БРЕНДА</button>
+                </div>
+                <div id="groupStatus"></div>
+
+                <div class="preview-table-wrap" id="groupNamesWrap" style="display:none;max-height:160px;">
+                    <div class="card-label" style="margin:14px 0 6px;">Знайдені товари в групі</div>
+                    <textarea id="groupNames" readonly style="width:100%;min-height:110px;max-height:160px;font-family:'JetBrains Mono', monospace;font-size:11.5px;line-height:1.6;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius);resize:vertical;background:var(--bg);color:#9ab3d4;outline:none;"></textarea>
+                </div>
+
+                <div class="results-grid" style="margin-top:14px;">
+                    <div class="lang-block" id="blockGroupUA">
+                        <div class="lang-header ua">
+                            <div class="lang-name"><span class="dot-blue"></span>🇺🇦 Опис групи (УКР)</div>
+                            <button class="copy-btn" onclick="copyText('groupDescUA', this)">Скопіювати</button>
+                        </div>
+                        <textarea id="groupDescUA" readonly></textarea>
+                    </div>
+                    <div class="lang-block" id="blockGroupRU">
+                        <div class="lang-header ru">
+                            <div class="lang-name"><span class="dot-green"></span>🇷🇺 Описание группы (РУС)</div>
+                            <button class="copy-btn" onclick="copyText('groupDescRU', this)">Скопировать</button>
+                        </div>
+                        <textarea id="groupDescRU" readonly></textarea>
+                    </div>
+                </div>
             </div>
 
             <!-- ─── Список посилань ─── -->
@@ -797,7 +837,7 @@ let batchResultsForExport = [];
 
 // ─── MODE TABS ─────────────────────────────────────────────────────────────────
 function switchMode(mode) {
-    ['single','batch','file'].forEach(m => {
+    ['single','group','batch','file'].forEach(m => {
         document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
         document.getElementById('panel' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
     });
@@ -915,7 +955,7 @@ async function callServer(prompt) {
 function buildPrompt(pageText, lang, managerNotes, noBrand) {
     const isRu     = lang === 'russian';
     const langLabel = isRu ? 'русском' : 'украинском';
-    const btnText   = isRu ? 'Купить сейчас' : 'Купити зараз';
+    const btnText   = isRu ? 'Перейти к выбору' : 'Перейти до вибору';
     const tipLabel  = isRu ? '🌿 Совет от Treeland' : '🌿 Порада від Treeland';
     const advLabel  = isRu ? 'Преимущества' : 'Переваги';
     const faqLabel  = isRu ? 'Частые вопросы' : 'Часті запитання';
@@ -939,9 +979,9 @@ function buildPrompt(pageText, lang, managerNotes, noBrand) {
 • Весь текст — виключно РОСІЙСЬКОЮ мовою.
 • ЗАБОРОНЕНІ українські букви: «і», «є», «ї», «ґ».
 • ЗАБОРОНЕНІ українські слова: "та", "також", "які", "що", "або", "цей/ця/це", "від", "є", "може", "дає", "має" та ін.
-• Кнопка: строго "Купить сейчас".` : `
+• Кнопка: строго "Перейти к выбору".` : `
 ✅ Весь текст — виключно УКРАЇНСЬКОЮ мовою.
-• Кнопка: строго "Купити зараз".`;
+• Кнопка: строго "Перейти до вибору".`;
 
     return `Ти — досвідчений SEO-копірайтер інтернет-магазину Treeland.
 
@@ -954,7 +994,7 @@ ${noBrandBlock}
 2. НЕ вигадуй характеристики — використовуй ТІЛЬКИ дані з джерела.
 3. Виводь ТІЛЬКИ готовий HTML без markdown-обгорток (без \`\`\`html).
 4. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
-5. Кнопка "Купити/Купить": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
+5. Кнопка "Перейти до вибору/Перейти к выбору": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
 6. Логотип TreeLand в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
 
 МОВНІ ПРАВИЛА:
@@ -1027,7 +1067,7 @@ ${noBrandNote}
 • Переводи ДОСЛОВНО — сохраняй смысл, факты, структуру.
 • НЕ добавляй и НЕ убирай информацию.
 • Сохраняй всю HTML-разметку, классы, теги — меняй только текст.
-• Кнопку "Купити зараз" замени на "Купить сейчас".
+• Кнопку "Перейти до вибору" замени на "Перейти к выбору".
 • Весь текст — исключительно РУССКИЙ. Запрещены украинские буквы: «і», «є», «ї», «ґ».
 • Запрещены украинские слова: "та", "також", "які", "що", "або", "від", "є", "може" и др.
 • Логотип Treeland оставь без изменений.
@@ -1035,6 +1075,126 @@ ${noBrandNote}
 
 ИСХОДНОЕ УКРАИНСКОЕ ОПИСАНИЕ:
 ${uaHtml}`;
+}
+
+// ─── ГРУПА ТОВАРІВ: пошук назв + узагальнюючий опис ──────────────────────────
+function buildGroupNamesPrompt(pageText) {
+    return `Це текст сторінки групи/категорії товарів інтернет-магазину (може містити багато позицій, меню, футер тощо).
+
+ЗАВДАННЯ: знайди і випиши назви ВСІХ окремих товарів (позицій асортименту), які реально перелічені на цій сторінці як товари групи.
+
+ПРАВИЛА:
+- Кожна назва товару — з нового рядка.
+- Без нумерації, без цін, без зайвих символів, без пояснень і коментарів.
+- Прибери дублікати (однакові назви лишай один раз).
+- НЕ включай пункти меню, категорії навігації, назви розділів сайту — тільки реальні товари.
+- Якщо назва містить розмір/артикул/варіант виконання — залиш як є.
+
+ТЕКСТ СТОРІНКИ:
+${pageText}`;
+}
+
+function buildGroupPrompt(pageText, namesList, lang, managerNotes, noBrand) {
+    const isRu      = lang === 'russian';
+    const langLabel = isRu ? 'русском' : 'украинском';
+    const btnText   = isRu ? 'Перейти к выбору' : 'Перейти до вибору';
+    const tipLabel  = isRu ? '🌿 Совет от Treeland' : '🌿 Порада від Treeland';
+    const advLabel  = isRu ? 'Преимущества' : 'Переваги';
+    const assortLabel = isRu ? 'Ассортимент группы' : 'Асортимент групи';
+    const faqLabel  = isRu ? 'Частые вопросы' : 'Часті запитання';
+
+    const noBrandBlock = noBrand ? `
+⛔ РЕЖИМ «БЕЗ БРЕНДА» — СТРОГО ОБЯЗАТЕЛЬНО
+Визнач назву бренду/виробника з тексту сторінки.
+ПОВНІСТЮ ВИКЛЮЧИ цю назву з усього тексту опису:
+• НЕ згадуй бренд ніде: ні в заголовку, ні в характеристиках, ні в FAQ.
+• Замість назви бренду — нейтральні слова: «виробник», «ця група товарів», «даний асортимент».
+` : '';
+
+    const notesBlock = managerNotes ? `
+ДОДАТКОВА ІНФОРМАЦІЯ ВІД МЕНЕДЖЕРА (ОБОВ'ЯЗКОВО ВКЛЮЧИТИ):
+Органічно впиши цю інформацію в опис:
+"${managerNotes}"
+` : '';
+
+    const langRules = isRu ? `
+⛔⛔⛔ ТІЛЬКИ РОСІЙСЬКА МОВА — ЖОДНИХ ВИНЯТКІВ ⛔⛔⛔
+• Весь текст — виключно РОСІЙСЬКОЮ мовою.
+• ЗАБОРОНЕНІ українські букви: «і», «є», «ї», «ґ».
+• ЗАБОРОНЕНІ українські слова: "та", "також", "які", "що", "або", "цей/ця/це", "від", "є", "може", "дає", "має" та ін.
+• Кнопка: строго "Перейти к выбору".` : `
+✅ Весь текст — виключно УКРАЇНСЬКОЮ мовою.
+• Кнопка: строго "Перейти до вибору".`;
+
+    return `Ти — досвідчений SEO-копірайтер інтернет-магазину Treeland.
+
+Тобі потрібно написати ОДИН узагальнюючий опис для ВСІЄЇ ГРУПИ (категорії) товарів, а не для одного окремого товару. Опис має підходити для розміщення на сторінці групи/категорії та охоплювати весь перелічений асортимент.
+
+СПИСОК ТОВАРІВ, ЯКІ ВХОДЯТЬ У ГРУПУ:
+${namesList}
+
+ДОДАТКОВИЙ КОНТЕКСТ ЗІ СТОРІНКИ (для деталей, характеристик, застосування):
+${pageText}
+${notesBlock}
+${noBrandBlock}
+ГОЛОВНІ ПРАВИЛА:
+1. Пиши ТІЛЬКИ ${langLabel} мовою.
+2. Опис узагальнюючий — про ВЕСЬ асортимент групи, а не про один товар. Не зациклюйся на одній позиції.
+3. НЕ вигадуй характеристики — використовуй ТІЛЬКИ дані з джерела та списку товарів.
+4. Виводь ТІЛЬКИ готовий HTML без markdown-обгорток (без \`\`\`html).
+5. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
+6. Кнопка "Перейти до вибору/Перейти к выбору": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
+7. Логотип TreeLand в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
+
+МОВНІ ПРАВИЛА:
+${langRules}
+
+СТРУКТУРА HTML-ОПИСУ (заповни реальними даними):
+<div class="tl-wrapper">
+
+<div class="tl-hero">
+  <div class="tl-hero-text">
+    <h1 class="tl-title">[ЗАГАЛЬНА НАЗВА ГРУПИ/КАТЕГОРІЇ ТОВАРІВ]<br/>
+      <span style="color:#689f38">[КОРОТКИЙ СЛОГАН — ГОЛОВНА ВИГОДА ВСІЄЇ ГРУПИ, 6-10 СЛІВ]</span>
+    </h1>
+    <p>[ВСТУПНИЙ АБЗАЦ 4-5 РЕЧЕНЬ: що це за група товарів, для кого, де застосовується, чим корисна]</p>
+  </div>
+</div>
+
+<h2 class="tl-subtitle">${assortLabel}</h2>
+<div class="tl-grid">
+  [Перелік основних видів/варіантів товарів групи на основі списку товарів вище, у вигляді карток:
+  <div class="tl-card"><strong>[Назва виду/варіанту]</strong><p>[1-2 речення про цей вид]</p></div>]
+</div>
+
+<h2 class="tl-subtitle">${advLabel}</h2>
+<div class="tl-grid">
+  [4-6 КАРТОК ПЕРЕВАГ на основі реальних даних цієї групи товарів:
+  <div class="tl-card"><strong>[ЗАГОЛОВОК 2-4 слова]</strong><p>[2-3 речення конкретно з користю для покупця]</p></div>]
+</div>
+
+<div class="tl-tip">
+  <h2 style="color:#2e7d32;margin-top:0">${tipLabel}</h2>
+  <p>[ПРАКТИЧНА ПОРАДА 2-3 речення, як обрати потрібний товар саме з цієї групи]</p>
+</div>
+
+<h2 class="tl-subtitle">${faqLabel}</h2>
+<div>
+  <p><strong>[Питання 1 — найчастіше питання покупців про цю групу товарів]?</strong><br/>[Відповідь 2-3 речення].</p>
+</div>
+<div>
+  <p><strong>[Питання 2 — про вибір потрібного варіанту в групі]?</strong><br/>[Відповідь 2-3 речення].</p>
+</div>
+<div>
+  <p><strong>[Питання 3 — про доставку, гарантію або монтаж]?</strong><br/>[Відповідь 2-3 речення].</p>
+</div>
+
+<div style="margin-top:40px"><a class="tl-buy-btn" href="#">${btnText}</a></div>
+<div style="border-top:1px dashed #c8e6c9;margin-top:50px;padding-top:20px;text-align:center">
+  <img alt="Treeland" src="https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg" />
+</div>
+
+</div>`;
 }
 
 function buildSEOPrompt(text, lang, noBrand) {
@@ -1724,6 +1884,64 @@ async function saveToSheets() {
         setStatus('❌ Помилка збереження.', 'err');
     }
     btn.disabled = false;
+}
+
+// ─── ГРУПА ТОВАРІВ (одна сторінка категорії → один узагальнюючий опис) ───────
+function setGroupStatus(msg, type) { const el = document.getElementById('groupStatus'); el.textContent = msg; el.className = type || ''; }
+function lockGroup(lock) {
+    document.getElementById('groupBtn').disabled        = lock;
+    document.getElementById('groupNoBrandBtn').disabled = lock;
+}
+
+async function runGroup(noBrand) {
+    const url = document.getElementById('groupLink').value.trim();
+    if (!url)                    { setGroupStatus('⚠️ Вставте посилання на сторінку групи товарів!', 'err'); return; }
+    if (!url.startsWith('http')) { setGroupStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
+
+    const modeLabel = noBrand ? ' [БЕЗ БРЕНДА]' : '';
+    lockGroup(true);
+    hideBlock('blockGroupUA'); hideBlock('blockGroupRU');
+    document.getElementById('groupNamesWrap').style.display = 'none';
+    document.getElementById('groupNames').value = '';
+    document.getElementById('groupDescUA').value = '';
+    document.getElementById('groupDescRU').value = '';
+    setGroupStatus('⏳ Завантажую сторінку групи товарів...', '');
+
+    const pageText = await fetchPageText(url);
+    if (!pageText) { setGroupStatus('❌ Не вдалося зчитати дані з сайту.', 'err'); lockGroup(false); return; }
+
+    setGroupStatus('⏳ Визначаю товари, що входять у групу...', '');
+    const namesRes = await callServer(buildGroupNamesPrompt(pageText));
+    if (!namesRes.ok || !namesRes.text.trim()) {
+        setGroupStatus('❌ Не вдалося визначити перелік товарів групи.', 'err');
+        lockGroup(false);
+        return;
+    }
+    const namesList  = namesRes.text.trim();
+    const namesCount = namesList.split('\n').map(s => s.trim()).filter(Boolean).length;
+    document.getElementById('groupNames').value = namesList;
+    document.getElementById('groupNamesWrap').style.display = '';
+
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+
+    setGroupStatus(`⏳ Пишу узагальнюючий опис групи (УКР)${modeLabel}...`, '');
+    const ua = await callServer(buildGroupPrompt(pageText, namesList, 'ukrainian', managerNotes, noBrand));
+    if (!ua.ok) { setGroupStatus('❌ Помилка при генерації опису групи.', 'err'); lockGroup(false); return; }
+
+    document.getElementById('groupDescUA').value = TREELAND_STYLES + ua.text;
+    showBlock('blockGroupUA');
+
+    setGroupStatus(`⏳ Пишу опис групи РУС${modeLabel}...`, '');
+    const ru = await callServer(buildGroupPrompt(pageText, namesList, 'russian', managerNotes, noBrand));
+    if (ru.ok) {
+        document.getElementById('groupDescRU').value = TREELAND_STYLES + ru.text;
+        showBlock('blockGroupRU');
+        setGroupStatus(`✅ Готово! Товарів у групі: ${namesCount}.`, 'ok');
+    } else {
+        setGroupStatus(`⚠️ УКР опис готовий, але сталася помилка при генерації РУС. Товарів у групі: ${namesCount}.`, '');
+    }
+
+    lockGroup(false);
 }
 
 // ─── COPY ─────────────────────────────────────────────────────────────────────
