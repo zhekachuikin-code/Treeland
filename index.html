@@ -242,6 +242,15 @@
         }
         #batchLinks::placeholder { color: var(--text-dim); }
         #batchLinks:focus { border-color: rgba(249,115,22,0.45); }
+        #groupLinks {
+            width: 100%; min-height: 90px; max-height: 220px;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6;
+            padding: 10px 12px;
+            background: var(--bg); border: 1px solid var(--border2);
+            border-radius: var(--radius); color: var(--text); resize: vertical; outline: none;
+        }
+        #groupLinks::placeholder { color: var(--text-dim); }
+        #groupLinks:focus { border-color: rgba(249,115,22,0.45); }
         .batch-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
         #batchStatus { font-size: 12px; color: var(--text-muted); min-height: 16px; font-family: 'JetBrains Mono', monospace; margin-top: 10px; }
         #batchStatus.ok  { color: var(--green); }
@@ -536,7 +545,7 @@
             </div>
             <div class="guide-step">
                 <div class="step-num">7</div>
-                <div class="step-body"><h4>🗂️ Група товарів</h4><p>Вставте посилання на сторінку групи/категорії — AI знайде назви всіх товарів у групі та напише один узагальнюючий опис на всю групу.</p></div>
+                <div class="step-body"><h4>🗂️ Група товарів</h4><p>Вставте одне або кілька посилань на сторінки групи/категорії (кожне з нового рядка) — AI знайде назви всіх товарів з усіх сторінок та напише один узагальнюючий опис на всю групу.</p></div>
             </div>
             <div class="guide-step">
                 <div class="step-num">8</div>
@@ -561,7 +570,7 @@
         <div class="card">
             <div class="mode-tabs">
                 <div class="mode-tab active" id="tabSingle" onclick="switchMode('single')">🔗 Один товар</div>
-                <div class="mode-tab" id="tabGroup"  onclick="switchMode('group')">🗂️ Один опис групи товарів</div>
+                <div class="mode-tab" id="tabGroup"  onclick="switchMode('group')">🗂️ Один опис Група товарів</div>
                 <div class="mode-tab" id="tabBatch"  onclick="switchMode('batch')">📦 Список посилань</div>
                 <div class="mode-tab" id="tabFile"   onclick="switchMode('file')">📁 Файл (XLS/CSV)</div>
             </div>
@@ -593,10 +602,9 @@
 
             <!-- ─── Група товарів ─── -->
             <div class="mode-panel" id="panelGroup">
-                <div class="card-label">Посилання на сторінку групи/категорії товарів</div>
-                <div class="input-row">
-                    <input type="text" id="groupLink" placeholder="https://prom.ua/ua/c1234567-nazva-grupi.html">
-                </div>
+                <div class="card-label">Посилання на групу/категорію товарів (можна кілька сторінок — кожне з нового рядка)</div>
+                <textarea id="groupLinks" placeholder="https://prom.ua/ua/c1234567-nazva-grupi.html&#10;https://prom.ua/ua/c1234567-nazva-grupi.html?page=2&#10;https://prom.ua/ua/c7654321-insha-grupa.html"></textarea>
+                <div class="batch-hint" id="groupLinksCount">0 посилань у списку</div>
                 <div class="action-row">
                     <button class="btn btn-primary" id="groupBtn"        onclick="runGroup(false)">🗂️ Написати опис групи</button>
                     <button class="btn btn-nobrand" id="groupNoBrandBtn" onclick="runGroup(true)">🚫 БЕЗ БРЕНДА</button>
@@ -604,7 +612,7 @@
                 <div id="groupStatus"></div>
 
                 <div class="preview-table-wrap" id="groupNamesWrap" style="display:none;max-height:160px;">
-                    <div class="card-label" style="margin:14px 0 6px;">Знайдені товари в групі</div>
+                    <div class="card-label" style="margin:14px 0 6px;">Знайдені товари в групі (з усіх сторінок)</div>
                     <textarea id="groupNames" readonly style="width:100%;min-height:110px;max-height:160px;font-family:'JetBrains Mono', monospace;font-size:11.5px;line-height:1.6;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius);resize:vertical;background:var(--bg);color:#9ab3d4;outline:none;"></textarea>
                 </div>
 
@@ -848,6 +856,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ta) ta.addEventListener('input', () => {
         const urls = parseBatchLinks(ta.value);
         document.getElementById('batchCount').textContent = urls.length + ' посилань у списку';
+    });
+    const gta = document.getElementById('groupLinks');
+    if (gta) gta.addEventListener('input', () => {
+        const urls = parseBatchLinks(gta.value);
+        document.getElementById('groupLinksCount').textContent = urls.length + ' посилань у списку';
     });
     // drag-drop for file
     const drop = document.getElementById('fileDrop');
@@ -1886,17 +1899,31 @@ async function saveToSheets() {
     btn.disabled = false;
 }
 
-// ─── ГРУПА ТОВАРІВ (одна сторінка категорії → один узагальнюючий опис) ───────
+// ─── ГРУПА ТОВАРІВ (кілька сторінок групи → один узагальнюючий опис) ─────────
 function setGroupStatus(msg, type) { const el = document.getElementById('groupStatus'); el.textContent = msg; el.className = type || ''; }
 function lockGroup(lock) {
     document.getElementById('groupBtn').disabled        = lock;
     document.getElementById('groupNoBrandBtn').disabled = lock;
 }
 
+function dedupeNames(namesText) {
+    const seen = new Set();
+    const out  = [];
+    namesText.split('\n').map(s => s.trim()).filter(Boolean).forEach(name => {
+        const key = name.toLowerCase();
+        if (!seen.has(key)) { seen.add(key); out.push(name); }
+    });
+    return out;
+}
+
+function truncateForContext(text, maxChars) {
+    if (text.length <= maxChars) return text;
+    return text.slice(0, maxChars) + '\n...[текст скорочено]';
+}
+
 async function runGroup(noBrand) {
-    const url = document.getElementById('groupLink').value.trim();
-    if (!url)                    { setGroupStatus('⚠️ Вставте посилання на сторінку групи товарів!', 'err'); return; }
-    if (!url.startsWith('http')) { setGroupStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
+    const urls = parseBatchLinks(document.getElementById('groupLinks').value);
+    if (urls.length === 0) { setGroupStatus('⚠️ Вставте хоча б одне посилання на сторінку групи товарів!', 'err'); return; }
 
     const modeLabel = noBrand ? ' [БЕЗ БРЕНДА]' : '';
     lockGroup(true);
@@ -1905,40 +1932,60 @@ async function runGroup(noBrand) {
     document.getElementById('groupNames').value = '';
     document.getElementById('groupDescUA').value = '';
     document.getElementById('groupDescRU').value = '';
-    setGroupStatus('⏳ Завантажую сторінку групи товарів...', '');
 
-    const pageText = await fetchPageText(url);
-    if (!pageText) { setGroupStatus('❌ Не вдалося зчитати дані з сайту.', 'err'); lockGroup(false); return; }
+    let allNamesText = [];
+    let contextParts  = [];
+    let failedUrls     = [];
 
-    setGroupStatus('⏳ Визначаю товари, що входять у групу...', '');
-    const namesRes = await callServer(buildGroupNamesPrompt(pageText));
-    if (!namesRes.ok || !namesRes.text.trim()) {
+    for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        setGroupStatus(`⏳ Сторінка ${i + 1} з ${urls.length}: завантажую...`, '');
+        const pageText = await fetchPageText(url);
+        if (!pageText) { failedUrls.push(url); continue; }
+
+        setGroupStatus(`⏳ Сторінка ${i + 1} з ${urls.length}: визначаю товари...`, '');
+        const namesRes = await callServer(buildGroupNamesPrompt(pageText));
+        if (namesRes.ok && namesRes.text.trim()) allNamesText.push(namesRes.text.trim());
+
+        contextParts.push(`--- Джерело: ${url} ---\n` + truncateForContext(pageText, 5000));
+    }
+
+    if (contextParts.length === 0) {
+        setGroupStatus('❌ Не вдалося зчитати жодну зі сторінок групи.', 'err');
+        lockGroup(false);
+        return;
+    }
+
+    const dedupedNames = dedupeNames(allNamesText.join('\n'));
+    if (dedupedNames.length === 0) {
         setGroupStatus('❌ Не вдалося визначити перелік товарів групи.', 'err');
         lockGroup(false);
         return;
     }
-    const namesList  = namesRes.text.trim();
-    const namesCount = namesList.split('\n').map(s => s.trim()).filter(Boolean).length;
+    const namesList     = dedupedNames.join('\n');
+    const combinedText  = contextParts.join('\n\n');
+
     document.getElementById('groupNames').value = namesList;
     document.getElementById('groupNamesWrap').style.display = '';
 
     const managerNotes = document.getElementById('managerNotes').value.trim();
+    const failNote = failedUrls.length ? ` (не вдалося зчитати: ${failedUrls.length})` : '';
 
     setGroupStatus(`⏳ Пишу узагальнюючий опис групи (УКР)${modeLabel}...`, '');
-    const ua = await callServer(buildGroupPrompt(pageText, namesList, 'ukrainian', managerNotes, noBrand));
+    const ua = await callServer(buildGroupPrompt(combinedText, namesList, 'ukrainian', managerNotes, noBrand));
     if (!ua.ok) { setGroupStatus('❌ Помилка при генерації опису групи.', 'err'); lockGroup(false); return; }
 
     document.getElementById('groupDescUA').value = TREELAND_STYLES + ua.text;
     showBlock('blockGroupUA');
 
     setGroupStatus(`⏳ Пишу опис групи РУС${modeLabel}...`, '');
-    const ru = await callServer(buildGroupPrompt(pageText, namesList, 'russian', managerNotes, noBrand));
+    const ru = await callServer(buildGroupPrompt(combinedText, namesList, 'russian', managerNotes, noBrand));
     if (ru.ok) {
         document.getElementById('groupDescRU').value = TREELAND_STYLES + ru.text;
         showBlock('blockGroupRU');
-        setGroupStatus(`✅ Готово! Товарів у групі: ${namesCount}.`, 'ok');
+        setGroupStatus(`✅ Готово! Сторінок оброблено: ${contextParts.length}/${urls.length}. Товарів у групі: ${dedupedNames.length}.${failNote}`, 'ok');
     } else {
-        setGroupStatus(`⚠️ УКР опис готовий, але сталася помилка при генерації РУС. Товарів у групі: ${namesCount}.`, '');
+        setGroupStatus(`⚠️ УКР опис готовий, але сталася помилка при генерації РУС. Товарів у групі: ${dedupedNames.length}.${failNote}`, '');
     }
 
     lockGroup(false);
