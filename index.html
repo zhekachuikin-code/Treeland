@@ -182,6 +182,7 @@
         .btn-seo      { background: linear-gradient(135deg, #4f9ef8, #2b6cb0); color: #fff; }
         .btn-name     { background: linear-gradient(135deg, #c084fc, #7c3aed); color: #fff; }
         .btn-sheets   { background: linear-gradient(135deg, #34d399, #059669); color: #0d0f12; }
+        .btn-insta    { background: linear-gradient(135deg, #f77737, #d62976 45%, #962fbf); color: #fff; }
         .btn-batch    { background: linear-gradient(135deg, #f97316, #c2410c); color: #fff; }
         .btn-ghost    { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border2); text-decoration: none; }
 
@@ -208,6 +209,70 @@
         }
         .mode-panel { display: none; }
         .mode-panel.active { display: block; }
+
+        /* ── SELECT ── */
+        select {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8299' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 14px center; padding-right: 34px;
+            transition: border-color 0.2s;
+        }
+        select:focus { border-color: var(--green-dim); }
+        select option, select optgroup { background: #141720; color: var(--text); }
+
+        /* ── CT-GRID (тип контенту для Instagram) ── */
+        .ct-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .ct-tab {
+            background: var(--surface2); border: 1px solid var(--border2);
+            border-radius: var(--radius); padding: 14px 12px; cursor: pointer;
+            text-align: center; transition: border-color 0.15s, background 0.15s, transform 0.12s;
+        }
+        .ct-tab:hover { border-color: var(--border2); transform: translateY(-1px); }
+        .ct-tab.active { background: linear-gradient(135deg, rgba(192,132,252,0.14), rgba(124,58,237,0.06)); border-color: var(--violet); }
+        .ct-icon { font-size: 22px; display: block; margin-bottom: 6px; }
+        .ct-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; }
+        .ct-tab.active .ct-name { color: var(--violet); }
+        .ct-hint { font-size: 10px; color: var(--text-dim); display: block; margin-top: 2px; }
+
+        /* ── TOGGLES (елементи банера) ── */
+        .toggles-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        @media(min-width: 900px) { .toggles-grid { grid-template-columns: repeat(4, 1fr); } }
+        .toggle-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--bg); border: 1px solid var(--border2);
+            border-radius: var(--radius); padding: 12px 14px; gap: 12px;
+            cursor: pointer; transition: border-color 0.15s, opacity 0.15s; user-select: none;
+        }
+        .toggle-item:hover { border-color: var(--green-dim); }
+        .toggle-item.off { opacity: 0.45; }
+        .toggle-item.off .ti-name { text-decoration: line-through; color: var(--text-muted); }
+        .ti-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+        .ti-icon { font-size: 17px; flex-shrink: 0; }
+        .ti-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .ti-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ti-hint { font-size: 10.5px; color: var(--text-dim); line-height: 1.3; }
+        .tswitch {
+            width: 38px; height: 21px; border-radius: 24px; flex-shrink: 0;
+            background: var(--surface2); border: 1px solid var(--border2);
+            position: relative; transition: background 0.2s, border-color 0.2s;
+        }
+        .tswitch::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 15px; height: 15px; border-radius: 50%;
+            background: var(--text-dim); transition: transform 0.2s, background 0.2s;
+        }
+        .toggle-item:not(.off) .tswitch { background: rgba(61,220,132,0.18); border-color: var(--green); }
+        .toggle-item:not(.off) .tswitch::after { transform: translateX(17px); background: var(--green); }
 
         .article-badge {
             display: none;
@@ -497,6 +562,21 @@
         }
         .name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
+        /* ── INSTAGRAM SECTION ── */
+        .insta-section-header { display: none; align-items: center; gap: 10px; padding: 4px 0; }
+        .insta-section-header.visible { display: flex; }
+        .insta-section-label { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #d62976; white-space: nowrap; }
+        .insta-section-line { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(214,41,118,0.35), transparent); }
+        .insta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .lang-header.insta-post { background: linear-gradient(90deg, #3a1a2e, #2a1622); border-bottom: 1px solid #4a1e3a; }
+        .lang-header.insta-img  { background: linear-gradient(90deg, #2e2a1a, #221e16); border-bottom: 1px solid #3a361e; }
+        .lang-header.insta-tags { background: linear-gradient(90deg, #1a2e2a, #16221e); border-bottom: 1px solid #1e3a36; }
+        .dot-pink   { width:7px;height:7px;border-radius:50%;background:#d62976;display:inline-block; }
+        .dot-orange { width:7px;height:7px;border-radius:50%;background:#f77737;display:inline-block; }
+        .dot-teal   { width:7px;height:7px;border-radius:50%;background:#2dd4bf;display:inline-block; }
+        .lang-block textarea.insta-ta { height: 160px; color: #e8ecf4; font-size: 13px; }
+        .lang-block textarea.insta-tags-ta { height: 100px; color: #7de0cf; }
+
         .foot-note { font-size: 11px; color: var(--text-dim); padding-top: 2px; }
 
         ::-webkit-scrollbar { width: 5px; }
@@ -573,6 +653,7 @@
                 <div class="mode-tab" id="tabGroup"  onclick="switchMode('group')">🗂️ Один опис Група товарів</div>
                 <div class="mode-tab" id="tabBatch"  onclick="switchMode('batch')">📦 Список посилань</div>
                 <div class="mode-tab" id="tabFile"   onclick="switchMode('file')">📁 Файл (XLS/CSV)</div>
+                <div class="mode-tab" id="tabInsta"  onclick="switchMode('insta')">📸 Товар/пост Instagram</div>
             </div>
 
             <!-- ─── Один товар ─── -->
@@ -674,6 +755,132 @@
                        target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
                 </div>
                 <div id="fileStatus"></div>
+            </div>
+
+            <!-- ─── Товар/пост Instagram ─── -->
+            <div class="mode-panel" id="panelInsta">
+                <div class="card-label">Посилання на товар (готова сторінка на сайті)</div>
+                <div class="input-row">
+                    <input type="text" id="instaLink" placeholder="https://prom.ua/p1234567890-tovar.html">
+                </div>
+
+                <div class="card-label" style="margin-top:16px;">Що створюємо</div>
+                <div class="ct-grid">
+                    <div class="ct-tab active" id="ctBanner" data-ct="banner" onclick="selectInstaCt(this)">
+                        <span class="ct-icon">🖼</span><span class="ct-name">Банер</span>
+                        <span class="ct-hint">Реклама · промо</span>
+                    </div>
+                    <div class="ct-tab" id="ctPost" data-ct="post" onclick="selectInstaCt(this)">
+                        <span class="ct-icon">📱</span><span class="ct-name">Пост</span>
+                        <span class="ct-hint">Instagram · Facebook</span>
+                    </div>
+                    <div class="ct-tab" id="ctReels" data-ct="reels" onclick="selectInstaCt(this)">
+                        <span class="ct-icon">🎬</span><span class="ct-name">Рілс / Відео</span>
+                        <span class="ct-hint">Обкладинка · прев'ю</span>
+                    </div>
+                </div>
+
+                <div class="card-label" style="margin-top:16px;">Формат</div>
+                <select id="instaFormat">
+                    <option value="">Будь-який</option>
+                    <optgroup label="Банер">
+                        <option value="banner_16_9">Горизонтальний 16:9</option>
+                        <option value="banner_2_1">Горизонтальний 2:1</option>
+                        <option value="prom_pc">Prom.ua ПК — 1565×450 px</option>
+                        <option value="prom_mob">Prom.ua Мобайл — 750×300 px</option>
+                    </optgroup>
+                    <optgroup label="Пост">
+                        <option value="post_1_1" selected>Квадрат 1:1 (пост)</option>
+                        <option value="post_4_5">Вертикальний 4:5 (пост)</option>
+                        <option value="post_4_3">Горизонтальний 4:3</option>
+                        <option value="post_3_4">Вертикальний 3:4</option>
+                    </optgroup>
+                    <optgroup label="Рілс / Відео">
+                        <option value="reels_9_16">Вертикальний 9:16 (рілс/сторіс)</option>
+                    </optgroup>
+                </select>
+
+                <div class="card-label" style="margin-top:16px;">Елементи банера</div>
+                <div class="toggles-grid">
+                    <div class="toggle-item" id="tog-cta" onclick="toggleInstaEl('cta')">
+                        <div class="ti-left">
+                            <span class="ti-icon">🖱</span>
+                            <div class="ti-text">
+                                <span class="ti-name">CTA-кнопка</span>
+                                <span class="ti-hint">«Купити зараз»</span>
+                            </div>
+                        </div>
+                        <div class="tswitch"></div>
+                    </div>
+                    <div class="toggle-item" id="tog-price" onclick="toggleInstaEl('price')">
+                        <div class="ti-left">
+                            <span class="ti-icon">🏷</span>
+                            <div class="ti-text">
+                                <span class="ti-name">Бейдж ціни / офферу</span>
+                                <span class="ti-hint">Ціна, знижка, промо-мітка</span>
+                            </div>
+                        </div>
+                        <div class="tswitch"></div>
+                    </div>
+                    <div class="toggle-item" id="tog-bottombar" onclick="toggleInstaEl('bottombar')">
+                        <div class="ti-left">
+                            <span class="ti-icon">▬</span>
+                            <div class="ti-text">
+                                <span class="ti-name">Bottom bar</span>
+                                <span class="ti-hint">4 блоки переваг знизу</span>
+                            </div>
+                        </div>
+                        <div class="tswitch"></div>
+                    </div>
+                    <div class="toggle-item" id="tog-icons" onclick="toggleInstaEl('icons')">
+                        <div class="ti-left">
+                            <span class="ti-icon">✦</span>
+                            <div class="ti-text">
+                                <span class="ti-name">Іконки-характеристики</span>
+                                <span class="ti-hint">Блоки з параметрами</span>
+                            </div>
+                        </div>
+                        <div class="tswitch"></div>
+                    </div>
+                </div>
+
+                <div class="action-row">
+                    <button class="btn btn-insta" id="instaBtn" onclick="generateInstaAll()">📸 Згенерувати промпт і пост</button>
+                </div>
+                <div id="instaStatus"></div>
+
+                <div class="insta-section-header" id="instaPromptHeader">
+                    <span class="insta-section-label">🖼️ Технічний промпт (Nano Banana Pro / Google Flow)</span>
+                    <div class="insta-section-line"></div>
+                </div>
+                <div class="lang-block" id="blockInstaPrompt" style="margin-top:8px;">
+                    <div class="lang-header insta-img">
+                        <div class="lang-name"><span class="dot-orange"></span>🖼️ Технічний промпт для фото/банера</div>
+                        <button class="copy-btn" onclick="copyText('instaTechPrompt', this)">Скопіювати</button>
+                    </div>
+                    <textarea id="instaTechPrompt" readonly class="insta-ta" style="height:260px;"></textarea>
+                </div>
+
+                <div class="insta-section-header" id="instaCaptionHeader">
+                    <span class="insta-section-label">📝 Пост для Instagram</span>
+                    <div class="insta-section-line"></div>
+                </div>
+                <div class="insta-grid" style="margin-top:8px;">
+                    <div class="lang-block" id="blockInstaPost">
+                        <div class="lang-header insta-post">
+                            <div class="lang-name"><span class="dot-pink"></span>📝 Текст поста</div>
+                            <button class="copy-btn" onclick="copyText('instaPost', this)">Скопіювати</button>
+                        </div>
+                        <textarea id="instaPost" readonly class="insta-ta"></textarea>
+                    </div>
+                    <div class="lang-block" id="blockInstaTags">
+                        <div class="lang-header insta-tags">
+                            <div class="lang-name"><span class="dot-teal"></span># Хештеги</div>
+                            <button class="copy-btn" onclick="copyText('instaHashtags', this)">Скопіювати</button>
+                        </div>
+                        <textarea id="instaHashtags" readonly class="insta-tags-ta"></textarea>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -845,7 +1052,7 @@ let batchResultsForExport = [];
 
 // ─── MODE TABS ─────────────────────────────────────────────────────────────────
 function switchMode(mode) {
-    ['single','group','batch','file'].forEach(m => {
+    ['single','group','batch','file','insta'].forEach(m => {
         document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
         document.getElementById('panel' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
     });
@@ -964,6 +1171,21 @@ async function callServer(prompt) {
     }
 }
 
+// ─── PROMHTML ОБГОРТКА ────────────────────────────────────────────────────────
+// AI сама дописує <promhtml>...</promhtml> навколо HTML-опису (за інструкцією в
+// промпті). Тут ми лише акуратно вставляємо TREELAND_STYLES ВСЕРЕДИНУ цих тегів,
+// щоб фінальний результат був єдиним цілим. Якщо AI забула теги — додаємо самі.
+function wrapTreelandOutput(aiText) {
+    const t = (aiText || '').trim();
+    const openTag  = /^<promhtml>/i;
+    const closeTag = /<\/promhtml>\s*$/i;
+    if (openTag.test(t) && closeTag.test(t)) {
+        const inner = t.replace(openTag, '').replace(closeTag, '');
+        return '<promhtml>' + TREELAND_STYLES + inner + '</promhtml>';
+    }
+    return '<promhtml>' + TREELAND_STYLES + t + '</promhtml>';
+}
+
 // ─── PROMPTS ──────────────────────────────────────────────────────────────────
 function buildPrompt(pageText, lang, managerNotes, noBrand) {
     const isRu     = lang === 'russian';
@@ -1009,6 +1231,7 @@ ${noBrandBlock}
 4. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
 5. Кнопка "Перейти до вибору/Перейти к выбору": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
 6. Логотип TreeLand в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
+7. ОБОВ'ЯЗКОВО обгорни ВЕСЬ результат у теги <promhtml> та </promhtml>: перший рядок відповіді — рівно "<promhtml>" (без лапок), останній рядок — рівно "</promhtml>" (без лапок). Між ними — увесь HTML-опис від <div class="tl-wrapper"> до закриваючого </div>, без жодних інших символів до чи після цих тегів.
 
 МОВНІ ПРАВИЛА:
 ${langRules}
@@ -1084,6 +1307,7 @@ ${noBrandNote}
 • Весь текст — исключительно РУССКИЙ. Запрещены украинские буквы: «і», «є», «ї», «ґ».
 • Запрещены украинские слова: "та", "також", "які", "що", "або", "від", "є", "може" и др.
 • Логотип Treeland оставь без изменений.
+• Обязательно сохрани теги <promhtml> в начале и </promhtml> в конце текста без изменений — они являются служебной обёрткой, а не переводимым текстом.
 • Выводи только голый HTML без markdown-обёрток.
 
 ИСХОДНОЕ УКРАИНСКОЕ ОПИСАНИЕ:
@@ -1158,6 +1382,7 @@ ${noBrandBlock}
 5. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
 6. Кнопка "Перейти до вибору/Перейти к выбору": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
 7. Логотип TreeLand в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
+8. ОБОВ'ЯЗКОВО обгорни ВЕСЬ результат у теги <promhtml> та </promhtml>: перший рядок відповіді — рівно "<promhtml>" (без лапок), останній рядок — рівно "</promhtml>" (без лапок). Між ними — увесь HTML-опис від <div class="tl-wrapper"> до закриваючого </div>, без жодних інших символів до чи після цих тегів.
 
 МОВНІ ПРАВИЛА:
 ${langRules}
@@ -1500,8 +1725,8 @@ async function processProduct(source, managerNotes, noBrand, onStage, isCancelle
     if (isCancelled()) { result.error = 'cancelled'; return result; }
     if (!ru.ok) { onStage(1, 'error', '❌ Помилка генерації РУС'); result.error = 'desc_ru_failed'; return result; }
 
-    result.descUA = TREELAND_STYLES + ua.text;
-    result.descRU = TREELAND_STYLES + ru.text;
+    result.descUA = wrapTreelandOutput(ua.text);
+    result.descRU = wrapTreelandOutput(ru.text);
     onStage(1, 'done');
 
     // SEO УКР
@@ -1791,13 +2016,13 @@ async function generate(noBrand) {
 
     const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, noBrand));
     if (ua.ok) {
-        document.getElementById('resUA').value = TREELAND_STYLES + ua.text;
+        document.getElementById('resUA').value = wrapTreelandOutput(ua.text);
         showBlock('blockUA');
         setStatus(`⏳ Перекладаю на РУС${modeLabel}...`, '');
 
         const ru = await callServer(buildTranslatePrompt(ua.text, noBrand));
         if (ru.ok) {
-            document.getElementById('resRU').value = TREELAND_STYLES + ru.text;
+            document.getElementById('resRU').value = wrapTreelandOutput(ru.text);
             showBlock('blockRU');
             document.getElementById('seoBtn').disabled = false;
             setStatus(`✅ Описи готові${modeLabel}! Артикул: ${currentArticle}. Наступний крок — SEO-ключі.`, 'ok');
@@ -1975,13 +2200,13 @@ async function runGroup(noBrand) {
     const ua = await callServer(buildGroupPrompt(combinedText, namesList, 'ukrainian', managerNotes, noBrand));
     if (!ua.ok) { setGroupStatus('❌ Помилка при генерації опису групи.', 'err'); lockGroup(false); return; }
 
-    document.getElementById('groupDescUA').value = TREELAND_STYLES + ua.text;
+    document.getElementById('groupDescUA').value = wrapTreelandOutput(ua.text);
     showBlock('blockGroupUA');
 
     setGroupStatus(`⏳ Пишу опис групи РУС${modeLabel}...`, '');
     const ru = await callServer(buildGroupPrompt(combinedText, namesList, 'russian', managerNotes, noBrand));
     if (ru.ok) {
-        document.getElementById('groupDescRU').value = TREELAND_STYLES + ru.text;
+        document.getElementById('groupDescRU').value = wrapTreelandOutput(ru.text);
         showBlock('blockGroupRU');
         setGroupStatus(`✅ Готово! Сторінок оброблено: ${contextParts.length}/${urls.length}. Товарів у групі: ${dedupedNames.length}.${failNote}`, 'ok');
     } else {
@@ -1989,6 +2214,287 @@ async function runGroup(noBrand) {
     }
 
     lockGroup(false);
+}
+
+// ─── ТОВАР/ПОСТ INSTAGRAM ─────────────────────────────────────────────────────
+// Портовано з окремого інструмента "ContentPrompt Studio" (generator.html):
+// технічний промпт під Nano Banana Pro / Google Flow, з прикріпленням
+// реального фото товару + лого TreeLand напряму в тому інструменті.
+
+let instaCt = 'banner';
+let instaElToggles = { cta: true, price: true, bottombar: true, icons: true };
+
+function selectInstaCt(el) {
+    document.querySelectorAll('.ct-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    instaCt = el.dataset.ct;
+}
+
+function toggleInstaEl(key, forceState) {
+    instaElToggles[key] = forceState !== undefined ? forceState : !instaElToggles[key];
+    document.getElementById('tog-' + key).classList.toggle('off', !instaElToggles[key]);
+}
+
+const INSTA_FMT = {
+    banner_16_9: { promptSize: '16:9 horizontal format', useLetterbox: false },
+    banner_2_1:  { promptSize: '2:1 horizontal format', useLetterbox: false },
+    prom_pc: {
+        useLetterbox: true, targetRatio: '3.48', marginTopPct: 14.5, marginBotPct: 14.5, stripPct: 71,
+    },
+    prom_mob: {
+        useLetterbox: true, targetRatio: '2.5', marginTopPct: 14.5, marginBotPct: 14.5, stripPct: 71,
+    },
+    post_1_1:   { promptSize: '1:1 square format', useLetterbox: false },
+    post_4_5:   { promptSize: '4:5 portrait, 1080×1350px', useLetterbox: false },
+    reels_9_16: { promptSize: '9:16 vertical full-screen, 1080×1920px', useLetterbox: false },
+    post_4_3:   { promptSize: '4:3 horizontal, 1200×900px', useLetterbox: false },
+    post_3_4:   { promptSize: '3:4 vertical portrait, 900×1200px', useLetterbox: false },
+};
+
+function instaLetterboxBlock(f) {
+    const top = f.marginTopPct, bot = f.marginBotPct, center = f.stripPct, ratio = f.targetRatio;
+    return '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n' +
+'!!  PRIORITY ZERO — THIS RULE CANCELS ALL OTHER LAYOUT INSTRUCTIONS        !!\n' +
+'!!  DO NOT PROCEED WITH ANY DESIGN UNTIL YOU HAVE READ AND ACCEPTED THIS   !!\n' +
+'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n' +
+'TASK: Generate a 16:9 image that contains a ' + ratio + ':1 ultra-wide banner in its center.\n\n' +
+'THE ONLY CORRECT METHOD:\n' +
+'  1. The ' + ratio + ':1 banner content occupies ONLY the CENTER ' + center + '% of the image height.\n' +
+'  2. The TOP ' + top + '% of the image = pure background fill. Identical color/gradient to the banner background. NOTHING ELSE.\n' +
+'  3. The BOTTOM ' + bot + '% of the image = pure background fill. Identical color/gradient to the banner background. NOTHING ELSE.\n' +
+'  4. The background in all three zones (top / center / bottom) must be seamless and continuous — as if the canvas was simply taller than the banner.\n\n' +
+'ABSOLUTE PROHIBITIONS FOR TOP ' + top + '% AND BOTTOM ' + bot + '% ZONES:\n' +
+'  ✗ NO text, logo, product, buttons, icons, shadows, gradients, lines or decorations of any kind\n' +
+'  ✓ ONLY: flat or gradient background fill — the exact same as used in the banner background\n\n' +
+'SELF-CHECK BEFORE FINALIZING:\n' +
+'  → Is the top ' + top + '% and bottom ' + bot + '% completely empty except for background color? YES / NO\n' +
+'  → Is every design element fully inside the center ' + center + '%? YES / NO\n' +
+'  If any answer is NO — the image is WRONG and must be regenerated.\n\n' +
+'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n' +
+'!!  END OF PRIORITY ZERO RULE                                                !!\n' +
+'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!';
+}
+
+function instaBrandBlock(shopName, productName) {
+    const lines = [];
+    if (shopName)   lines.push('BRAND NAME PROTECTION: "' + shopName + '" is a PROPER NOUN. NEVER translate, transliterate, or alter spelling. Copy character by character.');
+    if (productName) lines.push('PRODUCT NAME PROTECTION: "' + productName + '" is a PROPER NOUN / PRODUCT NAME. NEVER translate, transliterate, or alter its spelling in any language. Use this exact name character by character wherever it appears.');
+    if (!lines.length) return '';
+    return '\n' + lines.join('\n') + '\n';
+}
+
+function instaElementsOffBlock(elToggles) {
+    const disabled = [];
+    if (!elToggles.cta) disabled.push('CTA button');
+    if (!elToggles.price) disabled.push('Price / offer badge');
+    if (!elToggles.bottombar) disabled.push('Bottom bar / advantages row');
+    if (!elToggles.icons) disabled.push('Feature icon boxes');
+    if (!disabled.length) return '';
+    return '\nDISABLED ELEMENTS — DO NOT INCLUDE: ' + disabled.join(', ') + '.\n';
+}
+
+function instaLayoutBlock(shop_name, offer, lang, ctaText, elToggles, ct) {
+    const showIcons = elToggles.icons
+        ? '• RIGHT: 3–4 product feature icons in rounded boxes'
+        : '• RIGHT: (feature icons disabled)';
+    const ctaLine = elToggles.cta
+        ? '- CTA BUTTON: high-contrast filled button with exact text "' + ctaText + '"'
+        : '- (CTA disabled — do not add any button)';
+    const offerLine = (elToggles.price && offer) ? '- Offer badge: "' + offer + '"' : '';
+    const bottomBar = (elToggles.bottombar && ct === 'banner')
+        ? 'BOTTOM BAR — dark strip full width: 4 blocks (icon + short text)'
+        : 'BOTTOM BAR: DISABLED — do not add';
+
+    return '\n━━━ LAYOUT STRUCTURE ━━━\n' +
+'  TOP ROW:\n' +
+'  • LEFT: ' + (shop_name ? 'Provided logo "' + shop_name + '" — use the attached logo image as-is' : 'Brand name top-left') + '\n' +
+'  ' + showIcons + '\n\n' +
+'  MAIN AREA:\n' +
+'  • LEFT HALF — TEXT COLUMN:\n' +
+'    - Main headline: VERY LARGE bold type, 2–3 lines\n' +
+'    - Subheadline: 1 line\n' +
+'    - 2–3 feature rows (icon + keyword + short description)\n' +
+'    ' + ctaLine + '\n' +
+(offerLine ? '    ' + offerLine + '\n' : '') +
+'  • RIGHT HALF — PRODUCT PHOTO:\n' +
+'    - Use the attached product reference image EXACTLY as provided\n' +
+'    - Reproduce with full fidelity: shape, label, colors, proportions\n' +
+'    - Product MUST be FULLY VISIBLE — no cropping\n' +
+'    - Do NOT redesign, stylize, or alter the product appearance\n\n' +
+'  ' + bottomBar + '\n\n' +
+'TYPOGRAPHY: Language is ' + lang + '. Ultra-bold main headline.\n';
+}
+
+// Технічний промпт будується детерміновано (без AI) на основі даних, які AI
+// витягнув з реальної сторінки товару (brief).
+function buildInstaTechPrompt(brief, ct, fmtKey, shopName) {
+    const ctLabels = { banner: 'Advertising Banner', post: 'Social Media Post', reels: 'Reels / Video Cover' };
+    const ctDesc = {
+        banner: 'Create a commercial advertising BANNER.',
+        post: 'Create a visually engaging social media POST image.',
+        reels: 'Create a bold REELS/VIDEO COVER.',
+    };
+    const elToggles = { cta: instaElToggles.cta, price: instaElToggles.price && !!brief.offer, bottombar: instaElToggles.bottombar, icons: instaElToggles.icons };
+    const lang = 'Ukrainian';
+    const ctaText = 'Купити зараз';
+    const fmt = fmtKey ? INSTA_FMT[fmtKey] : null;
+    const fmtStr = fmt && !fmt.useLetterbox ? fmt.promptSize : '';
+    const moodStr = brief.mood || 'modern, commercial, visually appealing';
+
+    const lines = [];
+    if (fmt && fmt.useLetterbox) lines.push(instaLetterboxBlock(fmt));
+
+    lines.push('You are a world-class commercial ' + ctLabels[ct] + ' designer. ' + ctDesc[ct] + ' Generate ALL copy yourself.');
+    lines.push(instaBrandBlock(shopName, brief.product));
+    lines.push(instaElementsOffBlock(elToggles));
+
+    lines.push('\n━━━ REFERENCE IMAGES (attach in Nano Banana Pro) ━━━');
+    lines.push('• PRODUCT PHOTO: Attach a real photo of this product. Reproduce with EXACT fidelity — preserve shape, label, colors, proportions. Do NOT redesign or alter.');
+    if (shopName) lines.push('• LOGO: Attach the "' + shopName + '" logo. Place top-left. Do NOT alter.');
+
+    lines.push('\n━━━ PRODUCT BRIEF ━━━');
+    lines.push('Store / Client: ' + shopName);
+    if (brief.product)      lines.push('Product: ' + brief.product);
+    if (brief.category)     lines.push('Category: ' + brief.category);
+    if (brief.product_desc) lines.push('Description: ' + brief.product_desc);
+    if (brief.offer && elToggles.price) lines.push('Offer: ' + brief.offer);
+    if (brief.audience)     lines.push('Target audience: ' + brief.audience);
+
+    lines.push('\n━━━ VISUAL DIRECTION ━━━');
+    lines.push('Mood: ' + moodStr);
+    if (fmtStr) lines.push('Format: ' + fmtStr);
+    lines.push('Platform: Instagram / Facebook social media ad');
+    if (brief.colors)     lines.push('Colors: ' + brief.colors);
+    if (brief.background) lines.push('Background: ' + brief.background);
+
+    lines.push(instaLayoutBlock(shopName, brief.offer, lang, ctaText, elToggles, ct));
+
+    if (fmt && fmt.useLetterbox) {
+        lines.push(
+            '\n!!! FINAL REMINDER — PRIORITY ZERO RULE (see top of prompt) !!!\n' +
+            'TOP ' + fmt.marginTopPct + '% = background only. ZERO content.\n' +
+            'BOTTOM ' + fmt.marginBotPct + '% = background only. ZERO content.\n' +
+            'CENTER ' + fmt.stripPct + '% = ALL banner content. Nothing outside this zone.'
+        );
+    }
+    return lines.filter(l => l !== '').join('\n');
+}
+
+// AI-запит: витягнути з тексту сторінки короткий бриф товару (без ручного вводу)
+function buildInstaBriefPrompt(pageText, managerNotes) {
+    const notesBlock = managerNotes ? `\nДОДАТКОВА ІНФОРМАЦІЯ ВІД МЕНЕДЖЕРА (врахуй, якщо доречно): "${managerNotes}"\n` : '';
+    return `Проаналізуй текст сторінки товару інтернет-магазину і склади короткий бриф для рекламного дизайнера.
+
+ДЖЕРЕЛО ДАНИХ:
+${pageText}
+${notesBlock}
+Поверни СТРОГО валідний JSON без markdown-обгорток, без жодного тексту до чи після, у форматі:
+{
+  "product": "коротка назва товару",
+  "category": "категорія товару українською (1-3 слова)",
+  "product_desc": "чим корисний товар, яка цінність — 1 речення",
+  "offer": "ціна або акція, якщо є в джерелі, інакше порожній рядок",
+  "audience": "цільова аудиторія — коротко, 2-5 слів",
+  "colors": "рекомендована колірна палітра для рекламного банера (2-3 кольори, англійською, через кому)",
+  "background": "рекомендована сцена/фон для фото товару, яка відповідає категорії й призначенню товару — коротко англійською",
+  "mood": "настрій/стиль візуалу англійською, у форматі як 'modern, clean, airy' або 'cozy, warm, homey, inviting'"
+}
+
+Не вигадуй характеристик, яких немає в джерелі. Якщо якогось поля немає в джерелі (наприклад ціни) — постав порожній рядок "".`;
+}
+
+// AI-запит: підпис до посту + хештеги (окремо від технічного промпту)
+function buildInstaCaptionPrompt(pageText, managerNotes) {
+    const notesBlock = managerNotes ? `\nДОДАТКОВА ІНФОРМАЦІЯ ВІД МЕНЕДЖЕРА (врахуй, якщо доречно): "${managerNotes}"\n` : '';
+    return `Ти — SMM-копірайтер інтернет-магазину TreeLand, ведеш Instagram-акаунт магазину.
+
+ДЖЕРЕЛО ДАНИХ (текст зі сторінки товару на сайті — опис вже готовий і затверджений, використовуй його як факти про товар):
+${pageText}
+${notesBlock}
+Поверни СТРОГО валідний JSON без markdown-обгорток, без жодного тексту до чи після, у форматі:
+{
+  "post": "текст посту",
+  "hashtags": "хештеги через пробіл"
+}
+
+ВИМОГИ ДО "post":
+- Мова: ТІЛЬКИ українська.
+- Стиль: короткий, продажний, живий, з емодзі (5-9 речень або коротких абзаців).
+- Структура: чіпляючий перший рядок-гачок → 2-3 ключові переваги/факти з джерела (без вигадок) → заклик до дії (написати в директ / перейти по посиланню в шапці профілю / оформити замовлення).
+- НЕ вигадуй характеристики, яких немає в джерелі.
+- Можна використовувати помірну кількість емодзі (не перевантажуй).
+- Без хештегів у самому тексті поста — хештеги йдуть окремим полем.
+
+ВИМОГИ ДО "hashtags":
+- Мова: українська (можна кілька популярних англомовних, якщо доречно).
+- 15-25 хештегів через пробіл, кожен починається з #, без ком.
+- Мікс: назва товару/категорії, бренд (якщо є в джерелі), сфера використання, загальні популярні хештеги магазину/покупок (наприклад #treeland #інтернетмагазин #покупкионлайн), без заборонених/спамних тегів.`;
+}
+
+function parseInstaJson(raw) {
+    if (!raw) return null;
+    let txt = raw.trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+    try {
+        const obj = JSON.parse(txt);
+        if (obj && typeof obj === 'object') return obj;
+    } catch (e) {}
+    return null;
+}
+
+function setInstaStatus(msg, type) { const el = document.getElementById('instaStatus'); el.textContent = msg; el.className = type || ''; }
+
+function hideInstaResults() {
+    hideBlock('blockInstaPrompt'); hideBlock('blockInstaPost'); hideBlock('blockInstaTags');
+    document.getElementById('instaPromptHeader').classList.remove('visible');
+    document.getElementById('instaCaptionHeader').classList.remove('visible');
+    ['instaTechPrompt','instaPost','instaHashtags'].forEach(id => { document.getElementById(id).value = ''; });
+}
+
+async function generateInstaAll() {
+    const url = document.getElementById('instaLink').value.trim();
+    if (!url)                    { setInstaStatus('⚠️ Вставте посилання на товар!', 'err'); return; }
+    if (!url.startsWith('http')) { setInstaStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
+
+    const btn = document.getElementById('instaBtn');
+    btn.disabled = true;
+    hideInstaResults();
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+    const fmtKey = document.getElementById('instaFormat').value;
+
+    setInstaStatus('⏳ Парсинг сторінки товару...', '');
+    const pageText = await fetchPageText(url);
+    if (!pageText) {
+        setInstaStatus('❌ Не вдалося зчитати дані з сайту.', 'err');
+        btn.disabled = false;
+        return;
+    }
+
+    setInstaStatus('⏳ Аналізую товар (бриф для дизайну)...', '');
+    const briefRes = await callServer(buildInstaBriefPrompt(pageText, managerNotes));
+    const brief = briefRes.ok ? (parseInstaJson(briefRes.text) || {}) : {};
+
+    const techPrompt = buildInstaTechPrompt(brief, instaCt, fmtKey, 'TreeLand');
+    document.getElementById('instaTechPrompt').value = techPrompt;
+    document.getElementById('instaPromptHeader').classList.add('visible');
+    showBlock('blockInstaPrompt');
+
+    setInstaStatus('⏳ Генерую підпис до посту та хештеги...', '');
+    const capRes = await callServer(buildInstaCaptionPrompt(pageText, managerNotes));
+    if (capRes.ok) {
+        const cap = parseInstaJson(capRes.text);
+        if (cap && cap.post) {
+            document.getElementById('instaPost').value     = cap.post || '';
+            document.getElementById('instaHashtags').value = cap.hashtags || '';
+            document.getElementById('instaCaptionHeader').classList.add('visible');
+            showBlock('blockInstaPost'); showBlock('blockInstaTags');
+            setInstaStatus('✅ Готово! Технічний промпт і пост згенеровані.', 'ok');
+        } else {
+            setInstaStatus('⚠️ Технічний промпт готовий, але не вдалося розпізнати підпис до посту.', '');
+        }
+    } else {
+        setInstaStatus('⚠️ Технічний промпт готовий, але сталася помилка при генерації підпису.', '');
+    }
+    btn.disabled = false;
 }
 
 // ─── COPY ─────────────────────────────────────────────────────────────────────
