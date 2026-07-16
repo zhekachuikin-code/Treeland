@@ -67,59 +67,50 @@
 
         .layout {
             display: grid;
-            grid-template-columns: 280px 1fr;
+            grid-template-columns: 1fr;
             gap: 0;
             flex: 1;
             min-height: 0;
         }
 
-        .sidebar {
+        /* ─── Hover-guide tooltip (replaces the old static sidebar) ─── */
+        .hover-guide {
+            position: fixed;
+            z-index: 9999;
+            width: 280px;
+            max-width: calc(100vw - 24px);
             background: var(--surface);
-            border-right: 1px solid var(--border);
-            padding: 24px 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+            opacity: 0;
+            transform: translateY(4px);
+            pointer-events: none;
+            transition: opacity 0.14s ease, transform 0.14s ease;
         }
-        .sidebar-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--text-dim);
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border);
+        .hover-guide.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
-        .guide-step { display: flex; gap: 12px; align-items: flex-start; }
-        .step-num {
+        .hover-guide .tip-label {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.2px;
+            color: var(--green); margin-bottom: 6px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .hover-guide .tip-label .step-num {
             flex-shrink: 0;
-            width: 24px; height: 24px;
+            width: 18px; height: 18px;
             border-radius: 50%;
             background: var(--surface2);
             border: 1px solid var(--border2);
             display: flex; align-items: center; justify-content: center;
             font-family: 'Syne', sans-serif;
-            font-size: 11px; font-weight: 700;
+            font-size: 10px; font-weight: 700;
             color: var(--green);
         }
-        .step-body h4 { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
-        .step-body p  { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
-
-        .guide-tip {
-            background: linear-gradient(135deg, rgba(61,220,132,0.07), rgba(61,220,132,0.03));
-            border: 1px solid rgba(61,220,132,0.18);
-            border-radius: var(--radius);
-            padding: 12px 14px;
-        }
-        .guide-tip .tip-label {
-            font-size: 10px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 1.2px;
-            color: var(--green); margin-bottom: 6px;
-        }
-        .guide-tip p { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
-        .guide-tip p + p { margin-top: 5px; }
+        .hover-guide p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 
         .main {
             padding: 28px 36px;
@@ -594,51 +585,12 @@
     <div class="topbar-badge">Gemini · УКР + РУС · HTML</div>
 </div>
 
-<div class="layout">
+<div class="hover-guide" id="hoverGuide">
+    <div class="tip-label"><span class="step-num" id="hoverGuideStepNum">i</span><span id="hoverGuideTitle">—</span></div>
+    <p id="hoverGuideText"></p>
+</div>
 
-    <aside class="sidebar">
-        <div class="sidebar-title">📖 Як користуватися</div>
-        <div style="display:flex;flex-direction:column;gap:14px;">
-            <div class="guide-step">
-                <div class="step-num">1</div>
-                <div class="step-body"><h4>Вставте посилання</h4><p>Повний URL зі сторінки товару на будь-якому маркетплейсі.</p></div>
-            </div>
-            <div class="guide-step">
-                <div class="step-num">2</div>
-                <div class="step-body"><h4>Додайте примітки</h4><p>Бренд, акції, доставка, гарантія — AI врахує їх в описі.</p></div>
-            </div>
-            <div class="guide-step">
-                <div class="step-num">3</div>
-                <div class="step-body"><h4>Створіть опис</h4><p>«Створити» — AI згенерує опис і також витягне артикул.</p></div>
-            </div>
-            <div class="guide-step">
-                <div class="step-num">4</div>
-                <div class="step-body"><h4>Згенеруйте SEO-ключі</h4><p>Додаткові ключові слова для просування.</p></div>
-            </div>
-            <div class="guide-step">
-                <div class="step-num">5</div>
-                <div class="step-body"><h4>Покращте найменування</h4><p>AI складе SEO-оптимальну назву на основі опису і ключів.</p></div>
-            </div>
-            <div class="guide-step">
-                <div class="step-num">6</div>
-                <div class="step-body"><h4>Збережіть в таблицю</h4><p>Кнопка «📊 В таблицю» запише всі дані разом з артикулом.</p></div>
-            </div>
-            <div class="guide-step">
-                <div class="step-num">7</div>
-                <div class="step-body"><h4>🗂️ Група товарів</h4><p>Вставте одне або кілька посилань на сторінки групи/категорії (кожне з нового рядка) — AI знайде назви всіх товарів з усіх сторінок та напише один узагальнюючий опис на всю групу.</p></div>
-            </div>
-            <div class="guide-step">
-                <div class="step-num">8</div>
-                <div class="step-body"><h4>📦 Список або 📁 файл</h4><p>Обробіть одразу кілька товарів — посиланнями або файлом XLS/CSV.</p></div>
-            </div>
-        </div>
-        <div class="guide-tip">
-            <div class="tip-label">💡 Поради</div>
-            <p>Товар має бути публічно доступний (без авторизації).</p>
-            <p>Запити захищені та обробляються на сервері.</p>
-            <p>В пакетному режимі примітки застосовуються до всіх товарів.</p>
-        </div>
-    </aside>
+<div class="layout">
 
     <main class="main">
 
@@ -649,18 +601,30 @@
 
         <div class="card">
             <div class="mode-tabs">
-                <div class="mode-tab active" id="tabSingle" onclick="switchMode('single')">🔗 Один товар</div>
-                <div class="mode-tab" id="tabGroup"  onclick="switchMode('group')">🗂️ Один опис Група товарів</div>
-                <div class="mode-tab" id="tabBatch"  onclick="switchMode('batch')">📦 Список посилань</div>
-                <div class="mode-tab" id="tabFile"   onclick="switchMode('file')">📁 Файл (XLS/CSV)</div>
-                <div class="mode-tab" id="tabInsta"  onclick="switchMode('insta')">📸 Товар/пост Instagram</div>
+                <div class="mode-tab active" id="tabSingle" onclick="switchMode('single')"
+                    data-guide-title="🔗 Один товар"
+                    data-guide-text="Стандартний режим: вставляєте одне посилання на товар і генеруєте опис, SEO-ключі та назву.">🔗 Один товар</div>
+                <div class="mode-tab" id="tabGroup"  onclick="switchMode('group')"
+                    data-guide-step="7" data-guide-title="🗂️ Група товарів"
+                    data-guide-text="Вставте одне або кілька посилань на сторінки групи/категорії (кожне з нового рядка) — AI знайде назви всіх товарів з усіх сторінок та напише один узагальнюючий опис на всю групу.">🗂️ Один опис Група товарів</div>
+                <div class="mode-tab" id="tabBatch"  onclick="switchMode('batch')"
+                    data-guide-step="8" data-guide-title="📦 Список посилань"
+                    data-guide-text="Обробіть одразу кілька товарів — вставте список посилань, кожне з нового рядка.">📦 Список посилань</div>
+                <div class="mode-tab" id="tabFile"   onclick="switchMode('file')"
+                    data-guide-step="8" data-guide-title="📁 Файл (XLS/CSV)"
+                    data-guide-text="Завантажте файл XLS/CSV зі списком товарів — AI обробить усі рядки автоматично.">📁 Файл (XLS/CSV)</div>
+                <div class="mode-tab" id="tabInsta"  onclick="switchMode('insta')"
+                    data-guide-title="📸 Товар/пост Instagram"
+                    data-guide-text="Створення рекламного банера/поста та підпису для Instagram і Facebook на основі сторінки товару.">📸 Товар/пост Instagram</div>
             </div>
 
             <!-- ─── Один товар ─── -->
             <div class="mode-panel active" id="panelSingle">
                 <div class="card-label">Посилання на товар</div>
                 <div class="input-row">
-                    <input type="text" id="link" placeholder="https://prom.ua/p1234567890-tovar.html">
+                    <input type="text" id="link" placeholder="https://prom.ua/p1234567890-tovar.html"
+                        data-guide-step="1" data-guide-title="Вставте посилання"
+                        data-guide-text="Повний URL зі сторінки товару на будь-якому маркетплейсі.">
                 </div>
 
                 <div class="article-badge" id="articleBadge">
@@ -669,14 +633,28 @@
                 </div>
 
                 <div class="action-row">
-                    <button class="btn btn-auto"    id="autoBtn"    onclick="runAuto()">⚡ Авто</button>
-                    <button class="btn btn-primary" id="genBtn"      onclick="generate(false)">✨ Створити опис</button>
-                    <button class="btn btn-nobrand" id="noBrandBtn"  onclick="generate(true)">🚫 БЕЗ БРЕНДА</button>
-                    <button class="btn btn-seo"     id="seoBtn"      onclick="generateSEO()"  disabled>🔑 SEO-ключі</button>
-                    <button class="btn btn-name"    id="nameBtn"     onclick="generateName()" disabled>✦ Назва</button>
-                    <button class="btn btn-sheets"  id="saveBtn"     onclick="saveToSheets()" disabled>📊 В таблицю</button>
+                    <button class="btn btn-auto"    id="autoBtn"    onclick="runAuto()"
+                        data-guide-title="⚡ Авто"
+                        data-guide-text="Запускає весь ланцюжок одразу: опис → SEO-ключі → назву. Найшвидший спосіб обробити товар.">⚡ Авто</button>
+                    <button class="btn btn-primary" id="genBtn"      onclick="generate(false)"
+                        data-guide-step="3" data-guide-title="Створіть опис"
+                        data-guide-text="«Створити» — AI згенерує опис і також витягне артикул.">✨ Створити опис</button>
+                    <button class="btn btn-nobrand" id="noBrandBtn"  onclick="generate(true)"
+                        data-guide-title="🚫 БЕЗ БРЕНДА"
+                        data-guide-text="Той самий опис, але без згадок бренду/виробника — корисно, якщо назва бренду не повинна фігурувати в тексті.">🚫 БЕЗ БРЕНДА</button>
+                    <button class="btn btn-seo"     id="seoBtn"      onclick="generateSEO()"  disabled
+                        data-guide-step="4" data-guide-title="Згенеруйте SEO-ключі"
+                        data-guide-text="Додаткові ключові слова для просування. Стає активною після створення опису.">🔑 SEO-ключі</button>
+                    <button class="btn btn-name"    id="nameBtn"     onclick="generateName()" disabled
+                        data-guide-step="5" data-guide-title="Покращте найменування"
+                        data-guide-text="AI складе SEO-оптимальну назву на основі опису і ключів.">✦ Назва</button>
+                    <button class="btn btn-sheets"  id="saveBtn"     onclick="saveToSheets()" disabled
+                        data-guide-step="6" data-guide-title="Збережіть в таблицю"
+                        data-guide-text="Кнопка «📊 В таблицю» запише всі дані разом з артикулом.">📊 В таблицю</button>
                     <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
-                       target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
+                       target="_blank" class="btn btn-ghost"
+                       data-guide-title="📋 Відкрити таблицю"
+                       data-guide-text="Відкриває Google Таблицю, куди зберігаються усі згенеровані дані, в новій вкладці.">📋 Відкрити таблицю</a>
                 </div>
                 <div id="status"></div>
             </div>
@@ -687,8 +665,12 @@
                 <textarea id="groupLinks" placeholder="https://prom.ua/ua/c1234567-nazva-grupi.html&#10;https://prom.ua/ua/c1234567-nazva-grupi.html?page=2&#10;https://prom.ua/ua/c7654321-insha-grupa.html"></textarea>
                 <div class="batch-hint" id="groupLinksCount">0 посилань у списку</div>
                 <div class="action-row">
-                    <button class="btn btn-primary" id="groupBtn"        onclick="runGroup(false)">🗂️ Написати опис групи</button>
-                    <button class="btn btn-nobrand" id="groupNoBrandBtn" onclick="runGroup(true)">🚫 БЕЗ БРЕНДА</button>
+                    <button class="btn btn-primary" id="groupBtn"        onclick="runGroup(false)"
+                        data-guide-step="7" data-guide-title="🗂️ Написати опис групи"
+                        data-guide-text="AI проаналізує всі вказані сторінки групи/категорії та створить один узагальнюючий опис для всієї групи товарів.">🗂️ Написати опис групи</button>
+                    <button class="btn btn-nobrand" id="groupNoBrandBtn" onclick="runGroup(true)"
+                        data-guide-title="🚫 БЕЗ БРЕНДА"
+                        data-guide-text="Той самий груповий опис, але без згадок бренду/виробника.">🚫 БЕЗ БРЕНДА</button>
                 </div>
                 <div id="groupStatus"></div>
 
@@ -718,10 +700,14 @@
             <!-- ─── Список посилань ─── -->
             <div class="mode-panel" id="panelBatch">
                 <div class="card-label">Список посилань (кожне з нового рядка)</div>
-                <textarea id="batchLinks" placeholder="https://prom.ua/product-1&#10;https://prom.ua/product-2&#10;https://prom.ua/product-3"></textarea>
+                <textarea id="batchLinks" placeholder="https://prom.ua/product-1&#10;https://prom.ua/product-2&#10;https://prom.ua/product-3"
+                    data-guide-step="8" data-guide-title="📦 Список посилань"
+                    data-guide-text="Вставте посилання на кілька товарів, кожне з нового рядка — AI обробить їх усі підряд."></textarea>
                 <div class="batch-hint" id="batchCount">0 посилань у списку</div>
                 <div class="action-row">
-                    <button class="btn btn-batch" id="batchBtn" onclick="runBatch()">📦 Обробити всі товари</button>
+                    <button class="btn btn-batch" id="batchBtn" onclick="runBatch()"
+                        data-guide-step="8" data-guide-title="📦 Обробити всі товари"
+                        data-guide-text="Запускає обробку всього списку посилань: для кожного товару буде згенеровано опис, SEO-ключі та назву.">📦 Обробити всі товари</button>
                     <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
                        target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
                 </div>
@@ -750,7 +736,9 @@
                     </table>
                 </div>
                 <div class="action-row">
-                    <button class="btn btn-batch" id="fileBtn" onclick="runFileBatch()" disabled>📁 Обробити товари з файлу</button>
+                    <button class="btn btn-batch" id="fileBtn" onclick="runFileBatch()" disabled
+                        data-guide-step="8" data-guide-title="📁 Обробити товари з файлу"
+                        data-guide-text="Обробляє всі товари зі завантаженого файлу XLS/CSV: генерує опис, SEO-ключі та назву для кожного рядка.">📁 Обробити товари з файлу</button>
                     <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
                        target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
                 </div>
@@ -761,7 +749,9 @@
             <div class="mode-panel" id="panelInsta">
                 <div class="card-label">Посилання на товар (готова сторінка на сайті)</div>
                 <div class="input-row">
-                    <input type="text" id="instaLink" placeholder="https://prom.ua/p1234567890-tovar.html">
+                    <input type="text" id="instaLink" placeholder="https://prom.ua/p1234567890-tovar.html"
+                        data-guide-title="Посилання на товар"
+                        data-guide-text="Вставте URL сторінки товару — AI сформує з неї бриф для дизайну, технічний промпт та текст посту.">
                 </div>
 
                 <div class="card-label" style="margin-top:16px;">Що створюємо</div>
@@ -845,7 +835,9 @@
                 </div>
 
                 <div class="action-row">
-                    <button class="btn btn-insta" id="instaBtn" onclick="generateInstaAll()">📸 Згенерувати промпт і пост</button>
+                    <button class="btn btn-insta" id="instaBtn" onclick="generateInstaAll()"
+                        data-guide-title="📸 Згенерувати промпт і пост"
+                        data-guide-text="Створює технічний промпт для генерації зображення (Nano Banana Pro / Google Flow) та готовий текст посту з хештегами.">📸 Згенерувати промпт і пост</button>
                 </div>
                 <div id="instaStatus"></div>
 
@@ -920,7 +912,9 @@
 
         <!-- NOTES -->
         <div class="notes-card">
-            <div class="notes-header" id="notesToggleBtn" onclick="toggleNotes()">
+            <div class="notes-header" id="notesToggleBtn" onclick="toggleNotes()"
+                data-guide-step="2" data-guide-title="Додайте примітки"
+                data-guide-text="Бренд, акції, доставка, гарантія — AI врахує їх в описі. Клікніть, щоб розгорнути поле нотаток.">
                 <div class="notes-header-left">
                     <span style="font-size:15px">📋</span>
                     <div>
@@ -2530,6 +2524,90 @@ function clearNotes() {
     document.getElementById('managerNotes').value = '';
     onNotesChange();
 }
+
+// ─── HOVER GUIDE (гайд по наведенню курсора замість статичного сайдбару) ──────
+(function initHoverGuide() {
+    const guide     = document.getElementById('hoverGuide');
+    const titleEl   = document.getElementById('hoverGuideTitle');
+    const textEl    = document.getElementById('hoverGuideText');
+    const stepNumEl = document.getElementById('hoverGuideStepNum');
+    let currentTarget = null;
+
+    function positionGuide(target) {
+        const rect = target.getBoundingClientRect();
+        const margin = 12;
+        const guideWidth = guide.offsetWidth || 280;
+        const guideHeight = guide.offsetHeight || 90;
+
+        // Пробуємо праворуч від елемента, інакше — ліворуч, інакше — під ним
+        let left = rect.right + margin;
+        if (left + guideWidth > window.innerWidth - 8) {
+            left = rect.left - guideWidth - margin;
+        }
+        if (left < 8) {
+            left = Math.min(Math.max(rect.left, 8), window.innerWidth - guideWidth - 8);
+        }
+
+        let top = rect.top;
+        if (top + guideHeight > window.innerHeight - 8) {
+            top = window.innerHeight - guideHeight - 8;
+        }
+        if (top < 8) top = 8;
+
+        // Якщо гайд не влазить ні праворуч, ні ліворуч (вузький екран) — під елементом
+        if (rect.right + margin + guideWidth > window.innerWidth && rect.left - margin - guideWidth < 0) {
+            left = Math.min(Math.max(rect.left, 8), window.innerWidth - guideWidth - 8);
+            top = rect.bottom + margin;
+            if (top + guideHeight > window.innerHeight - 8) top = rect.top - guideHeight - margin;
+        }
+
+        guide.style.left = left + 'px';
+        guide.style.top  = top + 'px';
+    }
+
+    function showGuide(target) {
+        const title = target.getAttribute('data-guide-title');
+        const text  = target.getAttribute('data-guide-text');
+        const step  = target.getAttribute('data-guide-step');
+        if (!title && !text) return;
+
+        titleEl.textContent = title || '';
+        textEl.textContent  = text || '';
+        stepNumEl.textContent = step || 'i';
+        stepNumEl.style.display = 'flex';
+
+        currentTarget = target;
+        guide.classList.add('visible');
+        positionGuide(target);
+    }
+
+    function hideGuide() {
+        currentTarget = null;
+        guide.classList.remove('visible');
+    }
+
+    document.addEventListener('mouseover', (e) => {
+        const target = e.target.closest('[data-guide-title], [data-guide-text]');
+        if (target) showGuide(target);
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const target = e.target.closest('[data-guide-title], [data-guide-text]');
+        if (target && (!e.relatedTarget || !target.contains(e.relatedTarget))) hideGuide();
+    });
+
+    document.addEventListener('focusin', (e) => {
+        const target = e.target.closest('[data-guide-title], [data-guide-text]');
+        if (target) showGuide(target);
+    });
+    document.addEventListener('focusout', (e) => {
+        const target = e.target.closest('[data-guide-title], [data-guide-text]');
+        if (target) hideGuide();
+    });
+
+    window.addEventListener('scroll', () => { if (currentTarget) positionGuide(currentTarget); }, true);
+    window.addEventListener('resize', () => { if (currentTarget) positionGuide(currentTarget); });
+})();
 </script>
 </body>
 </html>
