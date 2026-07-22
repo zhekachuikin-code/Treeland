@@ -1143,6 +1143,30 @@ function extractArticle(pageText) {
     return '—';
 }
 
+// Гарантований запасний варіант назви товару — береться напряму з тексту
+// сторінки (без ІІ), щоб "Product:" у промпті НІКОЛИ не було порожнім,
+// навіть якщо ІІ-бриф не спрацював або повернув неповний JSON.
+function extractFallbackProductName(pageText) {
+    if (!pageText) return '';
+    const txt = pageText;
+    // 1) markdown-заголовок першого рівня "# Назва товару"
+    let m = /^#\s+(.+?)\s*$/m.exec(txt);
+    if (m && m[1]) return cleanFallbackName(m[1]);
+    // 2) frontmatter "title: ..."
+    m = /^title:\s*(.+?)\s*$/m.exec(txt);
+    if (m && m[1]) return cleanFallbackName(m[1]);
+    // 3) meta og:title
+    m = /meta-og:title:\s*(.+?)\s*$/m.exec(txt);
+    if (m && m[1]) return cleanFallbackName(m[1]);
+    return '';
+}
+function cleanFallbackName(raw) {
+    let s = raw.replace(/&quot;/g, '"').trim();
+    // прибираємо típoвий "хвіст" типу ": продажа, цена в ..." після назви товару
+    s = s.split(/:\s*продаж|:\s*продажа|,\s*ціна|,\s*цена/i)[0].trim();
+    return s;
+}
+
 async function fetchPageText(url) {
     try {
         const resp = await fetch('https://r.jina.ai/' + url);
@@ -2342,13 +2366,20 @@ function buildInstaTechPrompt(brief, ct, fmtKey, shopName) {
     lines.push(instaBrandBlock(shopName, brief.product));
     lines.push(instaElementsOffBlock(elToggles));
 
+    const productName = brief.product || '(product name unavailable — check source page manually)';
+
     lines.push('\n━━━ REFERENCE IMAGES (attach in Nano Banana Pro) ━━━');
     lines.push('• PRODUCT PHOTO: Attach a real photo of this product. Reproduce with EXACT fidelity — preserve shape, label, colors, proportions. Do NOT redesign or alter.');
+    if (brief.product || brief.category) {
+        lines.push('• PRODUCT IDENTITY LOCK: The attached photo shows "' + productName + '"' +
+            (brief.category ? ' — a ' + brief.category + '.' : '.') +
+            ' This is EXACTLY what the product is. Do NOT reinterpret, rename, or redraw it as a different type of object or furniture (e.g. do not turn a stool into a table, a chair into a bench, etc.). Keep the product\'s real identity and function 100% consistent with the photo.');
+    }
     if (shopName) lines.push('• LOGO: Attach the "' + shopName + '" logo. Place top-left. Do NOT alter.');
 
     lines.push('\n━━━ PRODUCT BRIEF ━━━');
     lines.push('Store / Client: ' + shopName);
-    if (brief.product)      lines.push('Product: ' + brief.product);
+    lines.push('Product: ' + productName);
     if (brief.category)     lines.push('Category: ' + brief.category);
     if (brief.product_desc) lines.push('Description: ' + brief.product_desc);
     if (brief.offer && elToggles.price) lines.push('Offer: ' + brief.offer);
@@ -2382,10 +2413,12 @@ function buildInstaBriefPrompt(pageText, managerNotes) {
 ДЖЕРЕЛО ДАНИХ:
 ${pageText}
 ${notesBlock}
+⚠️ КРИТИЧНО ВАЖЛИВО щодо типу товару: уважно визнач ТОЧНИЙ тип предмета з джерела і НЕ ПЛУТАЙ схожі категорії між собою (наприклад: табурет ≠ стілець ≠ стіл ≠ лава ≠ ослін). Візьми точне слово-тип із заголовка чи характеристик товару (поле "Тип меблів" тощо) і використай саме його в "product" та "category" — це піде дизайнеру як опис товару, і помилка тут призведе до неправильного зображення.
+
 Поверни СТРОГО валідний JSON без markdown-обгорток, без жодного тексту до чи після, у форматі:
 {
-  "product": "коротка назва товару",
-  "category": "категорія товару українською (1-3 слова)",
+  "product": "точна назва товару разом з типом (напр. 'Табурет Тікко Treeland')",
+  "category": "точний тип товару українською (1-3 слова, напр. 'табурет', а не 'стілець' чи 'стіл', якщо в джерелі саме табурет)",
   "product_desc": "чим корисний товар, яка цінність — 1 речення",
   "offer": "ціна або акція, якщо є в джерелі, інакше порожній рядок",
   "audience": "цільова аудиторія — коротко, 2-5 слів",
@@ -2467,6 +2500,14 @@ async function generateInstaAll() {
     const briefRes = await callServer(buildInstaBriefPrompt(pageText, managerNotes));
     const brief = briefRes.ok ? (parseInstaJson(briefRes.text) || {}) : {};
 
+    // ІІ-бриф міг не спрацювати / повернути неповний JSON — тоді підставляємо
+    // назву товару напряму з тексту сторінки, щоб "Product:" ніколи не було
+    // порожнім (саме порожнє поле "Product" призводило до плутанини на фото).
+    const briefIncomplete = !brief.product;
+    if (!brief.product) {
+        brief.product = extractFallbackProductName(pageText);
+    }
+
     const techPrompt = buildInstaTechPrompt(brief, instaCt, fmtKey, 'TreeLand');
     document.getElementById('instaTechPrompt').value = techPrompt;
     document.getElementById('instaPromptHeader').classList.add('visible');
@@ -2481,12 +2522,14 @@ async function generateInstaAll() {
             document.getElementById('instaHashtags').value = cap.hashtags || '';
             document.getElementById('instaCaptionHeader').classList.add('visible');
             showBlock('blockInstaPost'); showBlock('blockInstaTags');
-            setInstaStatus('✅ Готово! Технічний промпт і пост згенеровані.', 'ok');
+            setInstaStatus(briefIncomplete
+                ? '⚠️ Готово, але ІІ не розпізнав бриф товару — назву підставлено з тексту сторінки. Перевірте технічний промпт вручну!'
+                : '✅ Готово! Технічний промпт і пост згенеровані.', briefIncomplete ? '' : 'ok');
         } else {
-            setInstaStatus('⚠️ Технічний промпт готовий, але не вдалося розпізнати підпис до посту.', '');
+            setInstaStatus('⚠️ Технічний промпт готовий, але не вдалося розпізнати підпис до посту.' + (briefIncomplete ? ' Також не розпізнано бриф товару — перевірте промпт!' : ''), '');
         }
     } else {
-        setInstaStatus('⚠️ Технічний промпт готовий, але сталася помилка при генерації підпису.', '');
+        setInstaStatus('⚠️ Технічний промпт готовий, але сталася помилка при генерації підпису.' + (briefIncomplete ? ' Також не розпізнано бриф товару — перевірте промпт!' : ''), '');
     }
     btn.disabled = false;
 }
