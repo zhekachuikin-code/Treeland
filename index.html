@@ -1149,14 +1149,18 @@ function extractArticle(pageText) {
 function extractFallbackProductName(pageText) {
     if (!pageText) return '';
     const txt = pageText;
-    // 1) markdown-заголовок першого рівня "# Назва товару"
-    let m = /^#\s+(.+?)\s*$/m.exec(txt);
+    // 1) Jina Reader завжди віддає "Title: ..." одним із перших рядків —
+    //    перевіряємо ПЕРШИМ і БЕЗ урахування регістру. Раніше регулярка була
+    //    case-sensitive (шукала лише "title:" з малої) і не бачила "Title:"
+    //    з великої літери, яку насправді повертає r.jina.ai — саме тому
+    //    fallback майже завжди повертав порожній рядок і вилазило попередження.
+    let m = /^title:\s*(.+?)\s*$/im.exec(txt);
     if (m && m[1]) return cleanFallbackName(m[1]);
-    // 2) frontmatter "title: ..."
-    m = /^title:\s*(.+?)\s*$/m.exec(txt);
+    // 2) meta og:title (теж без урахування регістру)
+    m = /meta-og:title:\s*(.+?)\s*$/im.exec(txt);
     if (m && m[1]) return cleanFallbackName(m[1]);
-    // 3) meta og:title
-    m = /meta-og:title:\s*(.+?)\s*$/m.exec(txt);
+    // 3) markdown-заголовок першого рівня "# Назва товару"
+    m = /^#\s+(.+?)\s*$/m.exec(txt);
     if (m && m[1]) return cleanFallbackName(m[1]);
     return '';
 }
@@ -2465,6 +2469,18 @@ function parseInstaJson(raw) {
         const obj = JSON.parse(txt);
         if (obj && typeof obj === 'object') return obj;
     } catch (e) {}
+    // Запасний варіант: якщо ІІ додала пояснення до/після JSON (не послухала
+    // інструкцію "без жодного тексту до чи після"), вирізаємо перший
+    // повний {...} блок і пробуємо розпарсити саме його, замість того щоб
+    // одразу здаватись і залишати brief повністю порожнім.
+    const first = txt.indexOf('{');
+    const last  = txt.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) {
+        try {
+            const obj = JSON.parse(txt.slice(first, last + 1));
+            if (obj && typeof obj === 'object') return obj;
+        } catch (e) {}
+    }
     return null;
 }
 
