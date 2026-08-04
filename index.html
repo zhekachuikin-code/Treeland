@@ -67,6 +67,7 @@
         .brand-switch {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 6px;
             background: var(--surface2);
             border: 1px solid var(--border2);
@@ -614,6 +615,7 @@
         <button type="button" class="brand-btn" id="brandBtn-treeland" onclick="switchBrand('treeland')" style="--bc:#2e7d32"><span class="brand-dot" style="background:#2e7d32"></span>TreeLand</button>
         <button type="button" class="brand-btn" id="brandBtn-vitan" onclick="switchBrand('vitan')" style="--bc:#3c5ea9"><span class="brand-dot" style="background:#3c5ea9"></span>Vitan</button>
         <button type="button" class="brand-btn" id="brandBtn-jack" onclick="switchBrand('jack')" style="--bc:#67734f"><span class="brand-dot" style="background:#67734f"></span>10 Cents for Jack</button>
+        <button type="button" class="brand-btn" id="brandBtn-palmarius" onclick="switchBrand('palmarius')" style="--bc:#c8961f"><span class="brand-dot" style="background:#c8961f"></span>Palmarius</button>
     </div>
     <div class="topbar-badge">Gemini · УКР + РУС · HTML</div>
 </div>
@@ -1146,6 +1148,37 @@ const BRANDS = {
 .jk-footer{border-top:1px dashed #d9c2a7;margin-top:50px;padding-top:20px;text-align:center}
 .jk-footer img{height:40px;width:auto}
 </style>`
+    },
+    palmarius: {
+        id: 'palmarius', name: 'Palmarius', tipName: 'Palmarius', prefix: 'pm',
+        logoUrl: 'https://palmarius.com.ua/image/catalog/icons/logo_gray.svg',
+        logoAlt: 'Palmarius',
+        tipEmoji: '✦',
+        instaColors: 'warm mustard gold (#e3b244), charcoal gray-brown (#3f3b3a), light neutral beige',
+        css: `<style type="text/css">
+.pm-wrapper{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#3f3b3a;line-height:1.6;max-width:1200px;margin:0 auto;padding:20px;background-color:#fff}
+.pm-title{color:#3f3b3a;font-size:28px;font-weight:700;margin-bottom:15px;line-height:1.2}
+.pm-title span{color:#e3b244}
+.pm-subtitle{color:#3f3b3a;font-size:22px;border-bottom:2px solid #e3b244;padding-bottom:8px;margin-top:35px;margin-bottom:20px;text-transform:uppercase;letter-spacing:1px}
+.pm-hero{display:flex;align-items:center;gap:30px;margin-bottom:30px;flex-wrap:wrap}
+.pm-hero-img{flex:1;min-width:300px}
+.pm-hero-img img{width:100%;height:auto;border-radius:15px;box-shadow:0 4px 20px rgba(63,59,58,0.15)}
+.pm-hero-text{flex:1;min-width:300px}
+.pm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.pm-card{padding:20px;border-left:4px solid #e3b244;background:#f7f6f5;border-radius:4px}
+.pm-card strong{color:#3f3b3a}
+.pm-tip{background-color:#f2eee6;padding:25px;border-radius:12px;border-left:6px solid #e3b244;margin:40px 0}
+.pm-tip h2{color:#3f3b3a;margin-top:0}
+.pm-table{background:#f7f6f5;border-collapse:collapse;margin-bottom:30px;width:100%}
+.pm-table td{border:1px solid #e2ddd4;padding:12px 16px}
+.pm-table td:first-child{color:#8a8481;font-size:14px;width:50%}
+.pm-table td:last-child{color:#3f3b3a;font-weight:700}
+.pm-faq div{margin-bottom:14px}
+.pm-faq strong{color:#3f3b3a}
+.pm-buy-btn{display:inline-block;padding:16px 45px;background:linear-gradient(135deg,#e3b244 0%,#c8961f 100%);color:#3f3b3a!important;text-decoration:none!important;border-radius:50px;font-weight:700;font-size:18px;box-shadow:0 4px 15px rgba(227,178,68,0.35)}
+.pm-footer{border-top:1px dashed #e3b244;margin-top:50px;padding-top:20px;text-align:center}
+.pm-footer img{height:40px;width:auto}
+</style>`
     }
 };
 
@@ -1158,7 +1191,7 @@ function switchBrand(id) {
     currentBrand = id;
     localStorage.setItem('tl_currentBrand', id);
     const b = BRANDS[id];
-    ['treeland', 'vitan', 'jack'].forEach(k => {
+    ['treeland', 'vitan', 'jack', 'palmarius'].forEach(k => {
         const btn = document.getElementById('brandBtn-' + k);
         if (btn) btn.classList.toggle('active', k === id);
     });
@@ -1361,7 +1394,19 @@ function buildPrompt(pageText, lang, managerNotes, noBrand) {
 ПОВНІСТЮ ВИКЛЮЧИ цю назву з усього тексту опису:
 • НЕ згадуй бренд ніде: ні в заголовку, ні в характеристиках, ні в FAQ.
 • Замість назви бренду — нейтральні слова: «виробник», «дана модель», «цей товар».
-` : '';
+` : `
+⚠️⚠️⚠️ КРИТИЧНО ВАЖЛИВЕ ПРАВИЛО — ЗАМІНА НАЗВИ БРЕНДУ/ВИРОБНИКА ⚠️⚠️⚠️
+У ДЖЕРЕЛІ ДАНИХ нижче може згадуватись ІНША назва бренду/виробника/магазину (наприклад "Treeland", "Vitan" чи будь-яка інша) — це той самий виробник, просто товар продається під різними торговими марками в різних магазинах.
+ПРАВИЛЬНА назва бренду/виробника/магазину для ЦЬОГО опису — СТРОГО "${b.name}" і ТІЛЬКИ вона.
+ОБОВ'ЯЗКОВО заміни будь-яку згадку бренду/виробника з джерела на "${b.name}" — це стосується АБСОЛЮТНО ВСІХ місць в описі:
+• рядок "Виробник" у таблиці характеристик — значення СТРОГО "${b.name}", навіть якщо в джерелі написано іншу назву;
+• заголовок товару (h1);
+• вступний абзац;
+• картки переваг;
+• порада від бренду;
+• часті запитання (FAQ).
+НІКОЛИ не залишай в тексті назву бренду/виробника з джерела, якщо вона відрізняється від "${b.name}". Це критична помилка, якої не можна допускати.
+`;
 
     const notesBlock = managerNotes ? `
 ДОДАТКОВА ІНФОРМАЦІЯ ВІД МЕНЕДЖЕРА (ОБОВ'ЯЗКОВО ВКЛЮЧИТИ):
@@ -1386,7 +1431,7 @@ ${notesBlock}
 ${noBrandBlock}
 ГОЛОВНІ ПРАВИЛА:
 1. Пиши ТІЛЬКИ ${langLabel} мовою.
-2. НЕ вигадуй характеристики — використовуй ТІЛЬКИ дані з джерела.
+2. НЕ вигадуй характеристики — використовуй ТІЛЬКИ дані з джерела. ВИНЯТОК: назву бренду/виробника ЗАВЖДИ бери "${b.name}" (див. правило заміни бренду вище), навіть якщо в джерелі вказано іншу назву.
 3. Виводь ТІЛЬКИ готовий HTML без markdown-обгорток (без \`\`\`html).
 4. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
 5. Кнопка "Купити зараз/Купить сейчас": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
@@ -1510,7 +1555,13 @@ function buildGroupPrompt(pageText, namesList, lang, managerNotes, noBrand) {
 ПОВНІСТЮ ВИКЛЮЧИ цю назву з усього тексту опису:
 • НЕ згадуй бренд ніде: ні в заголовку, ні в характеристиках, ні в FAQ.
 • Замість назви бренду — нейтральні слова: «виробник», «ця група товарів», «даний асортимент».
-` : '';
+` : `
+⚠️⚠️⚠️ КРИТИЧНО ВАЖЛИВЕ ПРАВИЛО — ЗАМІНА НАЗВИ БРЕНДУ/ВИРОБНИКА ⚠️⚠️⚠️
+У ДОДАТКОВОМУ КОНТЕКСТІ нижче може згадуватись ІНША назва бренду/виробника/магазину (наприклад "Treeland", "Vitan" чи будь-яка інша) — це той самий виробник, просто товар продається під різними торговими марками в різних магазинах.
+ПРАВИЛЬНА назва бренду/виробника/магазину для ЦЬОГО опису — СТРОГО "${b.name}" і ТІЛЬКИ вона.
+ОБОВ'ЯЗКОВО заміни будь-яку згадку бренду/виробника з джерела на "${b.name}" — це стосується АБСОЛЮТНО ВСІХ місць в описі: заголовка, вступного абзацу, карток переваг, поради від бренду, FAQ.
+НІКОЛИ не залишай в тексті назву бренду/виробника з джерела, якщо вона відрізняється від "${b.name}". Це критична помилка, якої не можна допускати.
+`;
 
     const notesBlock = managerNotes ? `
 ДОДАТКОВА ІНФОРМАЦІЯ ВІД МЕНЕДЖЕРА (ОБОВ'ЯЗКОВО ВКЛЮЧИТИ):
@@ -1541,7 +1592,7 @@ ${noBrandBlock}
 ГОЛОВНІ ПРАВИЛА:
 1. Пиши ТІЛЬКИ ${langLabel} мовою.
 2. Опис узагальнюючий — про ВЕСЬ асортимент групи, а не про один товар. Не зациклюйся на одній позиції.
-3. НЕ вигадуй характеристики — використовуй ТІЛЬКИ дані з джерела та списку товарів.
+3. НЕ вигадуй характеристики — використовуй ТІЛЬКИ дані з джерела та списку товарів. ВИНЯТОК: назву бренду/виробника ЗАВЖДИ бери "${b.name}" (див. правило заміни бренду вище), навіть якщо в джерелі вказано іншу назву.
 4. Виводь ТІЛЬКИ готовий HTML без markdown-обгорток (без \`\`\`html).
 5. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
 6. Кнопка "Перейти до вибору/Перейти к выбору": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
@@ -2560,6 +2611,7 @@ function buildInstaTechPrompt(brief, ct, fmtKey, shopName) {
 
 // AI-запит: витягнути з тексту сторінки короткий бриф товару (без ручного вводу)
 function buildInstaBriefPrompt(pageText, managerNotes) {
+    const brand = BRANDS[currentBrand] || BRANDS.treeland;
     const notesBlock = managerNotes
         ? `\n⚠️ ПРИМІТКИ ВІД МЕНЕДЖЕРА (ОБОВ'ЯЗКОВО ВРАХУВАТИ, це не опційна довідкова інформація, а пряма вказівка від людини, яка веде цей товар):\n"${managerNotes}"\nЯкщо примітка менеджера суперечить чи доповнює текст сторінки (наприклад інша ціна, актуальна акція, умови доставки/гарантії/монтажу, подарунок до товару) — ПРІОРИТЕТ за приміткою менеджера, а не за текстом сайту. Обов'язково відобрази суть цих приміток у полях "offer" та "manager_highlight" нижче.\n`
         : '';
@@ -2568,11 +2620,14 @@ function buildInstaBriefPrompt(pageText, managerNotes) {
 ДЖЕРЕЛО ДАНИХ:
 ${pageText}
 ${notesBlock}
+⚠️⚠️⚠️ КРИТИЧНО ВАЖЛИВЕ ПРАВИЛО — ЗАМІНА НАЗВИ БРЕНДУ ⚠️⚠️⚠️
+У ДЖЕРЕЛІ ДАНИХ може згадуватись ІНША назва бренду/виробника (наприклад "Treeland", "Vitan" чи будь-яка інша) — це той самий виробник, просто товар продається під різними торговими марками в різних магазинах. ПРАВИЛЬНА назва бренду для цього завдання — СТРОГО "${brand.name}". Якщо в полі "product" згадується назва бренду з джерела — ЗАМІНИ її на "${brand.name}". НІКОЛИ не залишай в результаті назву бренду з джерела, якщо вона відрізняється від "${brand.name}".
+
 ⚠️ КРИТИЧНО ВАЖЛИВО щодо типу товару: уважно визнач ТОЧНИЙ тип предмета з джерела і НЕ ПЛУТАЙ схожі категорії між собою (наприклад: табурет ≠ стілець ≠ стіл ≠ лава ≠ ослін). Візьми точне слово-тип із заголовка чи характеристик товару (поле "Тип меблів" тощо) і використай саме його в "product" та "category" — це піде дизайнеру як опис товару, і помилка тут призведе до неправильного зображення.
 
 Поверни СТРОГО валідний JSON без markdown-обгорток, без жодного тексту до чи після, у форматі:
 {
-  "product": "точна назва товару разом з типом (напр. 'Табурет Тікко Treeland')",
+  "product": "точна назва товару разом з типом та назвою бренду '${brand.name}' (напр. 'Табурет Тікко ${brand.name}')",
   "category": "точний тип товару українською (1-3 слова, напр. 'табурет', а не 'стілець' чи 'стіл', якщо в джерелі саме табурет)",
   "product_desc": "чим корисний товар, яка цінність — 1 речення",
   "offer": "ціна або акція — врахуй примітку менеджера, якщо вона стосується ціни/акції, інакше візьми з джерела, інакше порожній рядок",
@@ -2583,7 +2638,7 @@ ${notesBlock}
   "manager_highlight": "коротко українською (до 12 слів) — ключовий факт від менеджера, який ОБОВ'ЯЗКОВО має бути видно на банері/пості (доставка, гарантія, монтаж, подарунок, наявність, оплата тощо), або порожній рядок, якщо приміток не було"
 }
 
-Не вигадуй характеристик, яких немає в джерелі чи в примітках менеджера. Якщо якогось поля немає в джерелі (наприклад ціни) — постав порожній рядок "".`;
+Не вигадуй характеристик, яких немає в джерелі чи в примітках менеджера (крім назви бренду — її завжди бери "${brand.name}"). Якщо якогось поля немає в джерелі (наприклад ціни) — постав порожній рядок "".`;
 }
 
 // AI-запит: підпис до посту + хештеги (окремо від технічного промпту)
@@ -2598,6 +2653,8 @@ function buildInstaCaptionPrompt(pageText, managerNotes) {
 ДЖЕРЕЛО ДАНИХ (текст зі сторінки товару на сайті — опис вже готовий і затверджений, використовуй його як факти про товар):
 ${pageText}
 ${notesBlock}
+⚠️ ЯКЩО в джерелі згадується назва бренду/виробника, яка відрізняється від "${brand.name}" (наприклад "Treeland", "Vitan" тощо) — це той самий виробник під іншою торговою маркою. У тексті поста та хештегах використовуй ТІЛЬКИ "${brand.name}", а не назву з джерела.
+
 Поверни СТРОГО валідний JSON без markdown-обгорток, без жодного тексту до чи після, у форматі:
 {
   "post": "текст посту",
