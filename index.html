@@ -64,6 +64,34 @@
             border-radius: 20px;
             letter-spacing: 0.5px;
         }
+        .brand-switch {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            padding: 4px;
+            border-radius: 10px;
+        }
+        .brand-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: transparent;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all .15s ease;
+            white-space: nowrap;
+        }
+        .brand-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+        .brand-btn .brand-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .brand-btn.active { color: #fff; border-color: var(--bc, var(--green)); background: var(--bc, var(--green)); }
+        .brand-btn.active .brand-dot { background: #fff; }
 
         .layout {
             display: grid;
@@ -579,8 +607,13 @@
 
 <div class="topbar">
     <div class="topbar-logo">
-        <img src="https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg" alt="TreeLand" style="height:36px;width:auto;display:block;">
-        <span>/ Генератор описаний</span>
+        <img id="topbarLogoImg" src="https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg" alt="TreeLand" style="height:36px;width:auto;display:block;">
+        <span>/ <span id="topbarLogoText">Генератор описаній</span></span>
+    </div>
+    <div class="brand-switch" id="brandSwitch">
+        <button type="button" class="brand-btn" id="brandBtn-treeland" onclick="switchBrand('treeland')" style="--bc:#2e7d32"><span class="brand-dot" style="background:#2e7d32"></span>TreeLand</button>
+        <button type="button" class="brand-btn" id="brandBtn-vitan" onclick="switchBrand('vitan')" style="--bc:#3c5ea9"><span class="brand-dot" style="background:#3c5ea9"></span>Vitan</button>
+        <button type="button" class="brand-btn" id="brandBtn-jack" onclick="switchBrand('jack')" style="--bc:#67734f"><span class="brand-dot" style="background:#67734f"></span>10 Cents for Jack</button>
     </div>
     <div class="topbar-badge">Gemini · УКР + РУС · HTML</div>
 </div>
@@ -1019,10 +1052,18 @@
 const SERVER_URL = 'https://gemini-api-server-dnzk.onrender.com/api/generate';
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzvaZuPB2IAzI-2Zd-D3iSx0hRImvFMU739IQuWQ7xsHHypjAV3RFEE_nZg6Xe1h58YcQ/exec';
 
-// ─── HTML стили TreeLand ──────────────────────────────────────────────────────
-const TREELAND_STYLES = `<style type="text/css">
+// ─── БРЕНДИ (усі три — один виробник, різні магазини/стилі) ──────────────────
+const BRANDS = {
+    treeland: {
+        id: 'treeland', name: 'TreeLand', tipName: 'Treeland', prefix: 'tl',
+        logoUrl: 'https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg',
+        logoAlt: 'TreeLand',
+        tipEmoji: '🌿',
+        instaColors: 'natural fresh green (#2e7d32), white, light natural wood tones',
+        css: `<style type="text/css">
 .tl-wrapper{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#333;line-height:1.6;max-width:1200px;margin:0 auto;padding:20px;background-color:#fff}
 .tl-title{color:#2e7d32;font-size:28px;font-weight:700;margin-bottom:15px;line-height:1.2}
+.tl-title span{color:#689f38}
 .tl-subtitle{color:#2e7d32;font-size:22px;border-bottom:2px solid #81c784;padding-bottom:8px;margin-top:35px;margin-bottom:20px;text-transform:uppercase;letter-spacing:1px}
 .tl-hero{display:flex;align-items:center;gap:30px;margin-bottom:40px;flex-wrap:wrap}
 .tl-hero-img{flex:1;min-width:300px}
@@ -1030,9 +1071,104 @@ const TREELAND_STYLES = `<style type="text/css">
 .tl-hero-text{flex:1;min-width:300px}
 .tl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
 .tl-card{padding:20px;border-left:4px solid #2e7d32;background:#f9fdf9;border-radius:4px}
+.tl-card strong{color:#2e7d32}
 .tl-tip{background-color:#e8f5e9;padding:25px;border-radius:12px;border-left:6px solid #2e7d32;margin:40px 0}
+.tl-tip h2{color:#2e7d32;margin-top:0}
+.tl-table{background:#f1f8e9;border-collapse:collapse;margin-bottom:30px;width:100%}
+.tl-table td{border:1px solid #c8e6c9;padding:12px 16px}
+.tl-table td:first-child{color:#689f38;font-size:14px;width:50%}
+.tl-table td:last-child{color:#2e7d32;font-weight:700}
+.tl-faq div{margin-bottom:14px}
+.tl-faq strong{color:#2e7d32}
 .tl-buy-btn{display:inline-block;padding:16px 45px;background:linear-gradient(135deg,#4caf50 0%,#2e7d32 100%);color:#ffffff!important;text-decoration:none!important;border-radius:50px;font-weight:700;font-size:18px;box-shadow:0 4px 15px rgba(46,125,50,0.3)}
-</style>`;
+.tl-footer{border-top:1px dashed #c8e6c9;margin-top:50px;padding-top:20px;text-align:center}
+.tl-footer img{height:40px;width:auto}
+</style>`
+    },
+    vitan: {
+        id: 'vitan', name: 'Vitan', tipName: 'Vitan', prefix: 'vt',
+        logoUrl: 'https://vitan.in.ua/image/catalog/vitan-logo.svg',
+        logoAlt: 'Vitan',
+        tipEmoji: '🔵',
+        instaColors: 'deep royal blue (#3c5ea9), soft periwinkle blue (#7291d1), white',
+        css: `<style type="text/css">
+.vt-wrapper{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#333;line-height:1.6;max-width:1200px;margin:0 auto;padding:20px;background-color:#fff}
+.vt-title{color:#3c5ea9;font-size:28px;font-weight:700;margin-bottom:15px;line-height:1.2}
+.vt-title span{color:#7291d1}
+.vt-subtitle{color:#3c5ea9;font-size:22px;border-bottom:2px solid #a8bfe8;padding-bottom:8px;margin-top:35px;margin-bottom:20px;text-transform:uppercase;letter-spacing:1px}
+.vt-hero{display:flex;align-items:center;gap:30px;margin-bottom:30px;flex-wrap:wrap}
+.vt-hero-img{flex:1;min-width:300px}
+.vt-hero-img img{width:100%;height:auto;border-radius:15px;box-shadow:0 4px 20px rgba(60,94,169,0.15)}
+.vt-hero-text{flex:1;min-width:300px}
+.vt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.vt-card{padding:20px;border-left:4px solid #3c5ea9;background:#f4f7fc;border-radius:4px}
+.vt-card strong{color:#3c5ea9}
+.vt-tip{background-color:#eaf0fa;padding:25px;border-radius:12px;border-left:6px solid #3c5ea9;margin:40px 0}
+.vt-tip h2{color:#3c5ea9;margin-top:0}
+.vt-table{background:#f4f7fc;border-collapse:collapse;margin-bottom:30px;width:100%}
+.vt-table td{border:1px solid #d7e1f4;padding:12px 16px}
+.vt-table td:first-child{color:#7291d1;font-size:14px;width:50%}
+.vt-table td:last-child{color:#3c5ea9;font-weight:700}
+.vt-faq div{margin-bottom:14px}
+.vt-faq strong{color:#3c5ea9}
+.vt-buy-btn{display:inline-block;padding:16px 45px;background:linear-gradient(135deg,#4d70bd 0%,#3c5ea9 100%);color:#ffffff!important;text-decoration:none!important;border-radius:50px;font-weight:700;font-size:18px;box-shadow:0 4px 15px rgba(60,94,169,0.3)}
+.vt-footer{border-top:1px dashed #a8bfe8;margin-top:50px;padding-top:20px;text-align:center}
+.vt-footer img{height:40px;width:auto}
+</style>`
+    },
+    jack: {
+        id: 'jack', name: '10 cents for Jack', tipName: 'Jack', prefix: 'jk',
+        logoUrl: 'https://4jack.com.ua/image/logo-jack.svg',
+        logoAlt: '10 cents for Jack',
+        tipEmoji: '🐾',
+        instaColors: 'warm olive green (#67734f), sandy beige (#d9c2a7), cream white',
+        css: `<style type="text/css">
+.jk-wrapper{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#3d3a35;line-height:1.6;max-width:1200px;margin:0 auto;padding:20px;background-color:#fff}
+.jk-title{color:#67734f;font-size:28px;font-weight:700;margin-bottom:15px;line-height:1.2}
+.jk-title span{color:#a98f6b}
+.jk-subtitle{color:#67734f;font-size:22px;border-bottom:2px solid #d9c2a7;padding-bottom:8px;margin-top:35px;margin-bottom:20px;text-transform:uppercase;letter-spacing:1px}
+.jk-hero{display:flex;align-items:center;gap:30px;margin-bottom:30px;flex-wrap:wrap}
+.jk-hero-img{flex:1;min-width:300px}
+.jk-hero-img img{width:100%;height:auto;border-radius:15px;box-shadow:0 4px 20px rgba(103,115,79,0.15)}
+.jk-hero-text{flex:1;min-width:300px}
+.jk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.jk-card{padding:20px;border-left:4px solid #67734f;background:#faf7f2;border-radius:4px}
+.jk-card strong{color:#67734f}
+.jk-tip{background-color:#f3ede2;padding:25px;border-radius:12px;border-left:6px solid #d9c2a7;margin:40px 0}
+.jk-tip h2{color:#67734f;margin-top:0}
+.jk-table{background:#faf7f2;border-collapse:collapse;margin-bottom:30px;width:100%}
+.jk-table td{border:1px solid #e6dcc9;padding:12px 16px}
+.jk-table td:first-child{color:#a98f6b;font-size:14px;width:50%}
+.jk-table td:last-child{color:#67734f;font-weight:700}
+.jk-faq div{margin-bottom:14px}
+.jk-faq strong{color:#67734f}
+.jk-buy-btn{display:inline-block;padding:16px 45px;background:linear-gradient(135deg,#7c8a5e 0%,#67734f 100%);color:#ffffff!important;text-decoration:none!important;border-radius:50px;font-weight:700;font-size:18px;box-shadow:0 4px 15px rgba(103,115,79,0.3)}
+.jk-footer{border-top:1px dashed #d9c2a7;margin-top:50px;padding-top:20px;text-align:center}
+.jk-footer img{height:40px;width:auto}
+</style>`
+    }
+};
+
+// Активний бренд — зберігається між сесіями
+let currentBrand = localStorage.getItem('tl_currentBrand') || 'treeland';
+if (!BRANDS[currentBrand]) currentBrand = 'treeland';
+
+function switchBrand(id) {
+    if (!BRANDS[id]) return;
+    currentBrand = id;
+    localStorage.setItem('tl_currentBrand', id);
+    const b = BRANDS[id];
+    ['treeland', 'vitan', 'jack'].forEach(k => {
+        const btn = document.getElementById('brandBtn-' + k);
+        if (btn) btn.classList.toggle('active', k === id);
+    });
+    const logoImg = document.getElementById('topbarLogoImg');
+    if (logoImg) { logoImg.src = b.logoUrl; logoImg.alt = b.logoAlt; }
+    const logoText = document.getElementById('topbarLogoText');
+    if (logoText) logoText.textContent = 'Генератор описаній · ' + b.name;
+}
+document.addEventListener('DOMContentLoaded', () => switchBrand(currentBrand));
+
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let currentArticle = '';
@@ -1199,21 +1335,23 @@ async function callServer(prompt) {
 // щоб фінальний результат був єдиним цілим. Якщо AI забула теги — додаємо самі.
 function wrapTreelandOutput(aiText) {
     const t = (aiText || '').trim();
+    const brandCss = (BRANDS[currentBrand] || BRANDS.treeland).css;
     const openTag  = /^<promhtml>/i;
     const closeTag = /<\/promhtml>\s*$/i;
     if (openTag.test(t) && closeTag.test(t)) {
         const inner = t.replace(openTag, '').replace(closeTag, '');
-        return '<promhtml>' + TREELAND_STYLES + inner + '</promhtml>';
+        return '<promhtml>' + brandCss + inner + '</promhtml>';
     }
-    return '<promhtml>' + TREELAND_STYLES + t + '</promhtml>';
+    return '<promhtml>' + brandCss + t + '</promhtml>';
 }
 
 // ─── PROMPTS ──────────────────────────────────────────────────────────────────
 function buildPrompt(pageText, lang, managerNotes, noBrand) {
+    const b = BRANDS[currentBrand] || BRANDS.treeland;
     const isRu     = lang === 'russian';
     const langLabel = isRu ? 'русском' : 'украинском';
     const btnText   = isRu ? 'Купить сейчас' : 'Купити зараз';
-    const tipLabel  = isRu ? '🌿 Совет от Treeland' : '🌿 Порада від Treeland';
+    const tipLabel  = isRu ? `${b.tipEmoji} Совет от ${b.tipName}` : `${b.tipEmoji} Порада від ${b.tipName}`;
     const advLabel  = isRu ? 'Преимущества' : 'Переваги';
     const faqLabel  = isRu ? 'Частые вопросы' : 'Часті запитання';
 
@@ -1240,7 +1378,7 @@ function buildPrompt(pageText, lang, managerNotes, noBrand) {
 ✅ Весь текст — виключно УКРАЇНСЬКОЮ мовою.
 • Кнопка: строго "Купити зараз".`;
 
-    return `Ти — досвідчений SEO-копірайтер інтернет-магазину Treeland.
+    return `Ти — досвідчений SEO-копірайтер інтернет-магазину ${b.name}.
 
 ДЖЕРЕЛО ДАНИХ (текст зі сторінки товару):
 ${pageText}
@@ -1252,47 +1390,48 @@ ${noBrandBlock}
 3. Виводь ТІЛЬКИ готовий HTML без markdown-обгорток (без \`\`\`html).
 4. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
 5. Кнопка "Купити зараз/Купить сейчас": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
-6. Логотип TreeLand в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
-7. ОБОВ'ЯЗКОВО обгорни ВЕСЬ результат у теги <promhtml> та </promhtml>: перший рядок відповіді — рівно "<promhtml>" (без лапок), останній рядок — рівно "</promhtml>" (без лапок). Між ними — увесь HTML-опис від <div class="tl-wrapper"> до закриваючого </div>, без жодних інших символів до чи після цих тегів.
+6. Логотип ${b.name} в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
+7. ОБОВ'ЯЗКОВО обгорни ВЕСЬ результат у теги <promhtml> та </promhtml>: перший рядок відповіді — рівно "<promhtml>" (без лапок), останній рядок — рівно "</promhtml>" (без лапок). Між ними — увесь HTML-опис від <div class="${b.prefix}-wrapper"> до закриваючого </div>, без жодних інших символів до чи після цих тегів.
 
 МОВНІ ПРАВИЛА:
 ${langRules}
 
 СТРУКТУРА HTML-ОПИСУ (заповни реальними даними з джерела):
-<div class="tl-wrapper">
+<div class="${b.prefix}-wrapper">
 
-<div class="tl-hero">
-  <div class="tl-hero-img" style="display:none">
+<div class="${b.prefix}-hero">
+  <div class="${b.prefix}-hero-img" style="display:none">
     <img alt="[НАЗВА ТОВАРУ]" src="[ПРЯМЕ ПОСИЛАННЯ НА ФОТО зі сторінки, якщо є]" />
   </div>
-  <div class="tl-hero-text">
-    <h1 class="tl-title">[НАЗВА ТОВАРУ З МОДЕЛЛЮ/БРЕНДОМ]<br/>
-      <span style="color:#689f38">[КОРОТКИЙ СЛОГАН — ГОЛОВНА ВИГОДА, 6-10 СЛІВ]</span>
+  <div class="${b.prefix}-hero-text">
+    <h1 class="${b.prefix}-title">[НАЗВА ТОВАРУ З МОДЕЛЛЮ/БРЕНДОМ]<br/>
+      <span>[КОРОТКИЙ СЛОГАН — ГОЛОВНА ВИГОДА, 6-10 СЛІВ]</span>
     </h1>
     <p>[ВСТУПНИЙ АБЗАЦ 4-5 РЕЧЕНЬ: що це, для кого, де використовується, ключова цінність]</p>
   </div>
 </div>
 
-<table cellspacing="0" style="background:#f1f8e9;border-collapse:collapse;margin-bottom:30px;width:100%">
+<table cellspacing="0" class="${b.prefix}-table">
   <tbody>
     [РЯДОК ДЛЯ КОЖНОЇ ХАРАКТЕРИСТИКИ:
-    <tr><td style="border:1px solid #c8e6c9;color:#689f38;font-size:14px;padding:12px 16px;width:50%">Назва</td><td style="border:1px solid #c8e6c9;color:#2e7d32;font-weight:700;padding:12px 16px">Значення</td></tr>
+    <tr><td>Назва</td><td>Значення</td></tr>
     Мінімум 4-8 рядків якщо дані є]
   </tbody>
 </table>
 
-<h2 class="tl-subtitle">${advLabel}</h2>
-<div class="tl-grid">
+<h2 class="${b.prefix}-subtitle">${advLabel}</h2>
+<div class="${b.prefix}-grid">
   [4-6 КАРТОК ПЕРЕВАГ на основі реальних даних товару:
-  <div class="tl-card"><strong>[ЗАГОЛОВОК 2-4 слова]</strong><p>[2-3 речення конкретно з користю для покупця]</p></div>]
+  <div class="${b.prefix}-card"><strong>[ЗАГОЛОВОК 2-4 слова]</strong><p>[2-3 речення конкретно з користю для покупця]</p></div>]
 </div>
 
-<div class="tl-tip">
-  <h2 style="color:#2e7d32;margin-top:0">${tipLabel}</h2>
+<div class="${b.prefix}-tip">
+  <h2>${tipLabel}</h2>
   <p>[ПРАКТИЧНА ПОРАДА 2-3 речення по використанню/догляду за товаром]</p>
 </div>
 
-<h2 class="tl-subtitle">${faqLabel}</h2>
+<h2 class="${b.prefix}-subtitle">${faqLabel}</h2>
+<div class="${b.prefix}-faq">
 <div>
   <p><strong>[Питання 1 — найчастіше питання покупців]?</strong><br/>[Відповідь 2-3 речення].</p>
 </div>
@@ -1305,20 +1444,22 @@ ${langRules}
 <div>
   <p><strong>[Питання 4 — про розміри або сумісність]?</strong><br/>[Відповідь 2-3 речення].</p>
 </div>
+</div>
 
-<div style="margin-top:40px"><a class="tl-buy-btn" href="#">${btnText}</a></div>
-<div style="border-top:1px dashed #c8e6c9;margin-top:50px;padding-top:20px;text-align:center">
-  <img alt="Treeland" src="https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg" />
+<div style="margin-top:40px"><a class="${b.prefix}-buy-btn" href="#">${btnText}</a></div>
+<div class="${b.prefix}-footer">
+  <img alt="${b.logoAlt}" src="${b.logoUrl}" />
 </div>
 
 </div>`;
 }
 
 function buildTranslatePrompt(uaHtml, noBrand) {
+    const b = BRANDS[currentBrand] || BRANDS.treeland;
     const noBrandNote = noBrand
         ? '\n⛔ РЕЖИМ «БЕЗ БРЕНДА»: в переводе ПОЛНОСТЬЮ ИСКЛЮЧИ название бренда — заменяй нейтральными словами.\n'
         : '';
-    return `Ты — профессиональный переводчик интернет-магазина Treeland.
+    return `Ты — профессиональный переводчик интернет-магазина ${b.name}.
 Переведи готовое HTML-описание товара с УКРАИНСКОГО на РУССКИЙ язык.
 ${noBrandNote}
 ПРАВИЛА:
@@ -1328,7 +1469,7 @@ ${noBrandNote}
 • Кнопку "Купити зараз" замени на "Купить сейчас".
 • Весь текст — исключительно РУССКИЙ. Запрещены украинские буквы: «і», «є», «ї», «ґ».
 • Запрещены украинские слова: "та", "також", "які", "що", "або", "від", "є", "може" и др.
-• Логотип Treeland оставь без изменений.
+• Логотип ${b.name} оставь без изменений.
 • Обязательно сохрани теги <promhtml> в начале и </promhtml> в конце текста без изменений — они являются служебной обёрткой, а не переводимым текстом.
 • Выводи только голый HTML без markdown-обёрток.
 
@@ -1354,10 +1495,11 @@ ${pageText}`;
 }
 
 function buildGroupPrompt(pageText, namesList, lang, managerNotes, noBrand) {
+    const b = BRANDS[currentBrand] || BRANDS.treeland;
     const isRu      = lang === 'russian';
     const langLabel = isRu ? 'русском' : 'украинском';
     const btnText   = isRu ? 'Перейти к выбору' : 'Перейти до вибору';
-    const tipLabel  = isRu ? '🌿 Совет от Treeland' : '🌿 Порада від Treeland';
+    const tipLabel  = isRu ? `${b.tipEmoji} Совет от ${b.tipName}` : `${b.tipEmoji} Порада від ${b.tipName}`;
     const advLabel  = isRu ? 'Преимущества' : 'Переваги';
     const assortLabel = isRu ? 'Ассортимент группы' : 'Асортимент групи';
     const faqLabel  = isRu ? 'Частые вопросы' : 'Часті запитання';
@@ -1385,7 +1527,7 @@ function buildGroupPrompt(pageText, namesList, lang, managerNotes, noBrand) {
 ✅ Весь текст — виключно УКРАЇНСЬКОЮ мовою.
 • Кнопка: строго "Перейти до вибору".`;
 
-    return `Ти — досвідчений SEO-копірайтер інтернет-магазину Treeland.
+    return `Ти — досвідчений SEO-копірайтер інтернет-магазину ${b.name}.
 
 Тобі потрібно написати ОДИН узагальнюючий опис для ВСІЄЇ ГРУПИ (категорії) товарів, а не для одного окремого товару. Опис має підходити для розміщення на сторінці групи/категорії та охоплювати весь перелічений асортимент.
 
@@ -1403,42 +1545,43 @@ ${noBrandBlock}
 4. Виводь ТІЛЬКИ готовий HTML без markdown-обгорток (без \`\`\`html).
 5. Для жирного шрифту використовуй ТІЛЬКИ теги <strong></strong>, ніяких ** **.
 6. Кнопка "Перейти до вибору/Перейти к выбору": href СТРОГО "#" — ніколи не вставляй зовнішній URL.
-7. Логотип TreeLand в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
-8. ОБОВ'ЯЗКОВО обгорни ВЕСЬ результат у теги <promhtml> та </promhtml>: перший рядок відповіді — рівно "<promhtml>" (без лапок), останній рядок — рівно "</promhtml>" (без лапок). Між ними — увесь HTML-опис від <div class="tl-wrapper"> до закриваючого </div>, без жодних інших символів до чи після цих тегів.
+7. Логотип ${b.name} в кінці ОБОВ'ЯЗКОВИЙ — src і alt не змінювати.
+8. ОБОВ'ЯЗКОВО обгорни ВЕСЬ результат у теги <promhtml> та </promhtml>: перший рядок відповіді — рівно "<promhtml>" (без лапок), останній рядок — рівно "</promhtml>" (без лапок). Між ними — увесь HTML-опис від <div class="${b.prefix}-wrapper"> до закриваючого </div>, без жодних інших символів до чи після цих тегів.
 
 МОВНІ ПРАВИЛА:
 ${langRules}
 
 СТРУКТУРА HTML-ОПИСУ (заповни реальними даними):
-<div class="tl-wrapper">
+<div class="${b.prefix}-wrapper">
 
-<div class="tl-hero">
-  <div class="tl-hero-text">
-    <h1 class="tl-title">[ЗАГАЛЬНА НАЗВА ГРУПИ/КАТЕГОРІЇ ТОВАРІВ]<br/>
-      <span style="color:#689f38">[КОРОТКИЙ СЛОГАН — ГОЛОВНА ВИГОДА ВСІЄЇ ГРУПИ, 6-10 СЛІВ]</span>
+<div class="${b.prefix}-hero">
+  <div class="${b.prefix}-hero-text">
+    <h1 class="${b.prefix}-title">[ЗАГАЛЬНА НАЗВА ГРУПИ/КАТЕГОРІЇ ТОВАРІВ]<br/>
+      <span>[КОРОТКИЙ СЛОГАН — ГОЛОВНА ВИГОДА ВСІЄЇ ГРУПИ, 6-10 СЛІВ]</span>
     </h1>
     <p>[ВСТУПНИЙ АБЗАЦ 4-5 РЕЧЕНЬ: що це за група товарів, для кого, де застосовується, чим корисна]</p>
   </div>
 </div>
 
-<h2 class="tl-subtitle">${assortLabel}</h2>
-<div class="tl-grid">
+<h2 class="${b.prefix}-subtitle">${assortLabel}</h2>
+<div class="${b.prefix}-grid">
   [Перелік основних видів/варіантів товарів групи на основі списку товарів вище, у вигляді карток:
-  <div class="tl-card"><strong>[Назва виду/варіанту]</strong><p>[1-2 речення про цей вид]</p></div>]
+  <div class="${b.prefix}-card"><strong>[Назва виду/варіанту]</strong><p>[1-2 речення про цей вид]</p></div>]
 </div>
 
-<h2 class="tl-subtitle">${advLabel}</h2>
-<div class="tl-grid">
+<h2 class="${b.prefix}-subtitle">${advLabel}</h2>
+<div class="${b.prefix}-grid">
   [4-6 КАРТОК ПЕРЕВАГ на основі реальних даних цієї групи товарів:
-  <div class="tl-card"><strong>[ЗАГОЛОВОК 2-4 слова]</strong><p>[2-3 речення конкретно з користю для покупця]</p></div>]
+  <div class="${b.prefix}-card"><strong>[ЗАГОЛОВОК 2-4 слова]</strong><p>[2-3 речення конкретно з користю для покупця]</p></div>]
 </div>
 
-<div class="tl-tip">
-  <h2 style="color:#2e7d32;margin-top:0">${tipLabel}</h2>
+<div class="${b.prefix}-tip">
+  <h2>${tipLabel}</h2>
   <p>[ПРАКТИЧНА ПОРАДА 2-3 речення, як обрати потрібний товар саме з цієї групи]</p>
 </div>
 
-<h2 class="tl-subtitle">${faqLabel}</h2>
+<h2 class="${b.prefix}-subtitle">${faqLabel}</h2>
+<div class="${b.prefix}-faq">
 <div>
   <p><strong>[Питання 1 — найчастіше питання покупців про цю групу товарів]?</strong><br/>[Відповідь 2-3 речення].</p>
 </div>
@@ -1448,10 +1591,11 @@ ${langRules}
 <div>
   <p><strong>[Питання 3 — про доставку, гарантію або монтаж]?</strong><br/>[Відповідь 2-3 речення].</p>
 </div>
+</div>
 
-<div style="margin-top:40px"><a class="tl-buy-btn" href="#">${btnText}</a></div>
-<div style="border-top:1px dashed #c8e6c9;margin-top:50px;padding-top:20px;text-align:center">
-  <img alt="Treeland" src="https://images.prom.ua/5784356149_w170_h85_treeland-ukrayinskij.jpg" />
+<div style="margin-top:40px"><a class="${b.prefix}-buy-btn" href="#">${btnText}</a></div>
+<div class="${b.prefix}-footer">
+  <img alt="${b.logoAlt}" src="${b.logoUrl}" />
 </div>
 
 </div>`;
@@ -2350,6 +2494,7 @@ function instaLayoutBlock(shop_name, offer, lang, ctaText, elToggles, ct) {
 // Технічний промпт будується детерміновано (без AI) на основі даних, які AI
 // витягнув з реальної сторінки товару (brief).
 function buildInstaTechPrompt(brief, ct, fmtKey, shopName) {
+    const brand = BRANDS[currentBrand] || BRANDS.treeland;
     const ctLabels = { banner: 'Advertising Banner', post: 'Social Media Post', reels: 'Reels / Video Cover' };
     const ctDesc = {
         banner: 'Create a commercial advertising BANNER.',
@@ -2396,7 +2541,8 @@ function buildInstaTechPrompt(brief, ct, fmtKey, shopName) {
     lines.push('Mood: ' + moodStr);
     if (fmtStr) lines.push('Format: ' + fmtStr);
     lines.push('Platform: Instagram / Facebook social media ad');
-    if (brief.colors)     lines.push('Colors: ' + brief.colors);
+    lines.push('Brand identity color palette (' + brand.name + ') — keep visual accents (buttons, badges, bottom bar, text highlights) consistent with this palette: ' + brand.instaColors + '. Product\'s own real colors from the photo must stay unchanged — this palette is for design accents only, not for recoloring the product.');
+    if (brief.colors)     lines.push('Product-specific accent suggestion: ' + brief.colors);
     if (brief.background) lines.push('Background: ' + brief.background);
 
     lines.push(instaLayoutBlock(shopName, brief.offer, lang, ctaText, elToggles, ct));
@@ -2442,10 +2588,12 @@ ${notesBlock}
 
 // AI-запит: підпис до посту + хештеги (окремо від технічного промпту)
 function buildInstaCaptionPrompt(pageText, managerNotes) {
+    const brand = BRANDS[currentBrand] || BRANDS.treeland;
+    const brandTag = '#' + brand.name.toLowerCase().replace(/[^a-z0-9а-яіїєґ]+/gi, '');
     const notesBlock = managerNotes
         ? `\n⚠️ ПРИМІТКИ ВІД МЕНЕДЖЕРА (ОБОВ'ЯЗКОВО ВРАХУВАТИ — це пряма вказівка від людини, яка веде цей товар, а не опційна довідка):\n"${managerNotes}"\nЦе МАЄ бути одним з ключових пунктів переваг у тексті поста (наприклад, якщо це акція/знижка — згадай її прямо й конкретно; якщо доставка/гарантія/монтаж/подарунок — включи як окрему перевагу). Якщо примітка суперечить тексту сторінки — довіряй примітці менеджера, вона актуальніша. Якщо примітка стосується акції/знижки/подарунка — додай 1-2 відповідні хештеги в полі "hashtags" (напр. #акція, #знижка, #подарунок).\n`
         : '';
-    return `Ти — SMM-копірайтер інтернет-магазину TreeLand, ведеш Instagram-акаунт магазину.
+    return `Ти — SMM-копірайтер інтернет-магазину ${brand.name}, ведеш Instagram-акаунт магазину.
 
 ДЖЕРЕЛО ДАНИХ (текст зі сторінки товару на сайті — опис вже готовий і затверджений, використовуй його як факти про товар):
 ${pageText}
@@ -2467,7 +2615,7 @@ ${notesBlock}
 ВИМОГИ ДО "hashtags":
 - Мова: українська (можна кілька популярних англомовних, якщо доречно).
 - 15-25 хештегів через пробіл, кожен починається з #, без ком.
-- Мікс: назва товару/категорії, бренд (якщо є в джерелі), сфера використання, загальні популярні хештеги магазину/покупок (наприклад #treeland #інтернетмагазин #покупкионлайн), без заборонених/спамних тегів.`;
+- Мікс: назва товару/категорії, бренд (якщо є в джерелі), сфера використання, загальні популярні хештеги магазину/покупок (обов'язково включи ${brandTag}, наприклад ${brandTag} #інтернетмагазин #покупкионлайн), без заборонених/спамних тегів.`;
 }
 
 function parseInstaJson(raw) {
@@ -2532,7 +2680,7 @@ async function generateInstaAll() {
         brief.product = extractFallbackProductName(pageText);
     }
 
-    const techPrompt = buildInstaTechPrompt(brief, instaCt, fmtKey, 'TreeLand');
+    const techPrompt = buildInstaTechPrompt(brief, instaCt, fmtKey, BRANDS[currentBrand].name);
     document.getElementById('instaTechPrompt').value = techPrompt;
     document.getElementById('instaPromptHeader').classList.add('visible');
     showBlock('blockInstaPrompt');
