@@ -93,6 +93,27 @@
         .brand-btn .brand-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
         .brand-btn.active { color: #fff; border-color: var(--bc, var(--green)); background: var(--bc, var(--green)); }
         .brand-btn.active .brand-dot { background: #fff; }
+        .resume-banner {
+            display: none;
+            align-items: center;
+            gap: 14px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            background: linear-gradient(90deg, rgba(240,196,74,0.14), rgba(240,196,74,0.06));
+            border: 1px solid rgba(240,196,74,0.4);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin: 0 24px 16px 24px;
+        }
+        .resume-banner.visible { display: flex; }
+        .resume-banner-text { font-size: 13px; color: var(--text); flex: 1; min-width: 240px; }
+        .resume-banner-text b { color: #f0c44a; }
+        .resume-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .resume-banner-actions button {
+            border: none; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .resume-btn-continue { background: #f0c44a; color: #0d0f12; }
+        .resume-btn-discard  { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border2) !important; }
 
         .layout {
             display: grid;
@@ -618,6 +639,14 @@
         <button type="button" class="brand-btn" id="brandBtn-palmarius" onclick="switchBrand('palmarius')" style="--bc:#c8961f"><span class="brand-dot" style="background:#c8961f"></span>Palmarius</button>
     </div>
     <div class="topbar-badge">Gemini · УКР + РУС · HTML</div>
+</div>
+
+<div class="resume-banner" id="resumeBanner">
+    <div class="resume-banner-text" id="resumeBannerText">Знайдено незавершену пакетну обробку.</div>
+    <div class="resume-banner-actions">
+        <button type="button" class="resume-btn-continue" onclick="resumeBatchProgress()">▶ Продовжити</button>
+        <button type="button" class="resume-btn-discard" onclick="discardBatchProgress()">🗑 Скасувати</button>
+    </div>
 </div>
 
 <div class="hover-guide" id="hoverGuide">
@@ -1201,6 +1230,7 @@ function switchBrand(id) {
     if (logoText) logoText.textContent = 'Генератор описаній · ' + b.name;
 }
 document.addEventListener('DOMContentLoaded', () => switchBrand(currentBrand));
+document.addEventListener('DOMContentLoaded', () => checkBatchResume());
 
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -1909,6 +1939,85 @@ function bpResetControls() {
 
 const STAGE_LABELS = ['Парсинг', 'Опис УКР/РУС', 'SEO-ключі', 'Назва', 'Запис у таблицю'];
 
+// ─── ЗБЕРЕЖЕННЯ ПРОГРЕСУ ПАКЕТНОЇ ОБРОБКИ (переживає перезавантаження сторінки) ─
+const BATCH_PROGRESS_KEY = 'tl_batchProgress';
+
+function saveBatchProgress(mode, items, labels, nextIndex, results, done, errors, managerNotes) {
+    try {
+        const payload = {
+            mode, items, labels, nextIndex, results, done, errors, managerNotes,
+            total: items.length,
+            brand: currentBrand,
+            savedAt: Date.now()
+        };
+        localStorage.setItem(BATCH_PROGRESS_KEY, JSON.stringify(payload));
+    } catch (e) {
+        // локальне сховище переповнене або недоступне — просто не зберігаємо прогрес,
+        // на саму обробку це не впливає
+    }
+}
+
+function clearBatchProgress() {
+    try { localStorage.removeItem(BATCH_PROGRESS_KEY); } catch (e) { /* ignore */ }
+}
+
+function loadBatchProgress() {
+    try {
+        const raw = localStorage.getItem(BATCH_PROGRESS_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || !Array.isArray(data.items) || !data.items.length) return null;
+        if (typeof data.nextIndex !== 'number' || data.nextIndex >= data.items.length) return null;
+        return data;
+    } catch (e) { return null; }
+}
+
+function checkBatchResume() {
+    const data = loadBatchProgress();
+    const banner = document.getElementById('resumeBanner');
+    if (!data || !banner) return;
+    const modeLabel = data.mode === 'file' ? 'з файлу' : 'зі списку посилань';
+    const when = data.savedAt ? new Date(data.savedAt).toLocaleString('uk-UA') : '';
+    document.getElementById('resumeBannerText').innerHTML =
+        `Знайдено незавершену пакетну обробку <b>${modeLabel}</b>: <b>${data.nextIndex} з ${data.total}</b> товарів вже оброблено` +
+        (when ? ` (збережено ${when})` : '') + `. Продовжити з того ж місця?`;
+    banner.classList.add('visible');
+}
+
+function discardBatchProgress() {
+    clearBatchProgress();
+    const banner = document.getElementById('resumeBanner');
+    if (banner) banner.classList.remove('visible');
+}
+
+async function resumeBatchProgress() {
+    const data = loadBatchProgress();
+    const banner = document.getElementById('resumeBanner');
+    if (banner) banner.classList.remove('visible');
+    if (!data) return;
+
+    if (data.brand && BRANDS[data.brand]) switchBrand(data.brand);
+    switchMode(data.mode === 'file' ? 'file' : 'batch');
+
+    const notesEl = document.getElementById('managerNotes');
+    if (notesEl) notesEl.value = data.managerNotes || '';
+
+    if (data.mode === 'file') {
+        setFileStatus(`▶ Відновлюю обробку з файлу з товару ${data.nextIndex + 1}...`, '');
+    } else {
+        const ta = document.getElementById('batchLinks');
+        if (ta) { ta.value = data.items.join('\n'); ta.dispatchEvent(new Event('input')); }
+        setBatchStatus(`▶ Відновлюю обробку з посилання ${data.nextIndex + 1}...`, '');
+    }
+
+    await runBatchCore(data.mode === 'file' ? 'file' : 'batch', data.items, data.labels, data.managerNotes || '', {
+        startIndex:   data.nextIndex,
+        resultsSoFar: data.results || [],
+        doneSoFar:    data.done || 0,
+        errorsSoFar:  data.errors || 0
+    });
+}
+
 // ─── CORE: ОБРОБКА ОДНОГО ТОВАРУ (TreeLand) ──────────────────────────────────
 async function processProduct(source, managerNotes, noBrand, onStage, isCancelled) {
     const isUrl = typeof source === 'string';
@@ -2040,81 +2149,77 @@ async function runBatch() {
     const raw  = document.getElementById('batchLinks').value;
     const urls = parseBatchLinks(raw);
     if (!urls.length) { setBatchStatus('⚠️ Додайте хоча б одне коректне посилання!', 'err'); return; }
-
-    batchCancelled = false;
-    lockAll(true);
-    bpResetControls();
-    bpRenderList(urls); bpSetOverall(0, urls.length); bpShow(); bpHideDownload();
-    setBatchStatus(`⏳ Обробка ${urls.length} товарів...`, '');
-
     const managerNotes = document.getElementById('managerNotes').value.trim();
-    let done = 0, errors = 0, lastOk = null;
-    batchResultsForExport = [];
-
-    for (let i = 0; i < urls.length; i++) {
-        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
-        await waitIfPaused();
-        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
-        bpSetItem(i, 'active', 'старт...');
-        const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
-        const res = await processProduct(urls[i], managerNotes, false, onStage, () => batchCancelled);
-        if (res.ok)                 { const lbl = res.saveOk === false ? '⚠️ не збережено в таблицю' : '✓ готово'; bpSetItem(i, res.saveOk === false ? 'error' : 'done', lbl, res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: lbl }); if (res.saveOk === false) errors++; }
-        else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
-        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
-        bpSetOverall(i + 1, urls.length);
-        if (!batchCancelled && i < urls.length - 1) await new Promise(r => setTimeout(r, 1500));
-    }
-
-    if (lastOk) showLastResultInMainFields(lastOk);
-    if (batchResultsForExport.length) document.getElementById('bpDownloadRow').style.display = 'flex';
-    if (batchCancelled)   setBatchStatus(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, '');
-    else if (!errors)     setBatchStatus(`✅ Готово! Усі ${done} товарів оброблено та збережено.`, 'ok');
-    else                  setBatchStatus(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, '');
-    lockAll(false);
+    await runBatchCore('batch', urls, urls, managerNotes, {});
 }
 
 // ─── ПАКЕТНА ОБРОБКА — ФАЙЛ ──────────────────────────────────────────────────
 async function runFileBatch() {
     if (!fileRows.length) { setFileStatus('⚠️ Спочатку завантажте файл з товарами!', 'err'); return; }
-
-    batchCancelled = false;
-    lockAll(true);
-    bpResetControls();
-
     const items = fileRows.map(r => ({
         type: 'text',
         article: r.article,
         text:    buildSourceTextFromRow(r),
         label:   (r.article !== '—' ? r.article + ' — ' : '') + r.name
     }));
-
-    bpRenderList(items.map(it => it.label));
-    bpSetOverall(0, items.length); bpShow(); bpHideDownload();
-    setFileStatus(`⏳ Обробка ${items.length} товарів з файлу...`, '');
-
+    const labels = items.map(it => it.label);
     const managerNotes = document.getElementById('managerNotes').value.trim();
-    let done = 0, errors = 0, lastOk = null;
-    batchResultsForExport = [];
+    await runBatchCore('file', items, labels, managerNotes, {});
+}
 
-    for (let i = 0; i < items.length; i++) {
+// ─── СПІЛЬНЕ ЯДРО ПАКЕТНОЇ ОБРОБКИ (посилання / файл), з підтримкою відновлення ─
+async function runBatchCore(mode, items, labels, managerNotes, opts) {
+    const statusFn   = mode === 'file' ? setFileStatus : setBatchStatus;
+    const startIndex = opts.startIndex || 0;
+
+    batchCancelled = false;
+    lockAll(true);
+    bpResetControls();
+    bpRenderList(labels);
+    bpShow(); bpHideDownload();
+
+    let done = opts.doneSoFar || 0, errors = opts.errorsSoFar || 0, lastOk = null;
+    batchResultsForExport = (opts.resultsSoFar || []).slice();
+
+    // Відображаємо вже раніше оброблені товари (при відновленні після перезавантаження)
+    for (let k = 0; k < startIndex; k++) {
+        const r = batchResultsForExport[k];
+        if (!r) continue;
+        const isDone = r.ok && r.saveOk !== false;
+        bpSetItem(k, isDone ? 'done' : 'error', r.status || (isDone ? '✓ готово' : '✕ помилка'), r.article);
+        if (r.ok) lastOk = r;
+    }
+    bpSetOverall(startIndex, items.length);
+    statusFn(startIndex ? `▶ Відновлено. Обробка ${items.length} товарів (з ${startIndex + 1})...` : `⏳ Обробка ${items.length} товарів...`, '');
+
+    // Одразу зберігаємо початковий стан — щоб список не загубився навіть при ранньому перезавантаженні
+    saveBatchProgress(mode, items, labels, startIndex, batchResultsForExport, done, errors, managerNotes);
+
+    for (let i = startIndex; i < items.length; i++) {
         if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
         await waitIfPaused();
         if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
         bpSetItem(i, 'active', 'старт...');
         const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
         const res = await processProduct(items[i], managerNotes, false, onStage, () => batchCancelled);
-        if (res.ok)                 { const lbl = res.saveOk === false ? '⚠️ не збережено в таблицю' : '✓ готово'; bpSetItem(i, res.saveOk === false ? 'error' : 'done', lbl, res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: lbl }); if (res.saveOk === false) errors++; }
+        if (res.ok)                         { const lbl = res.saveOk === false ? '⚠️ не збережено в таблицю' : '✓ готово'; bpSetItem(i, res.saveOk === false ? 'error' : 'done', lbl, res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: lbl }); if (res.saveOk === false) errors++; }
         else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
-        else                        { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
+        else                                 { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
         bpSetOverall(i + 1, items.length);
+        if (!batchCancelled) saveBatchProgress(mode, items, labels, i + 1, batchResultsForExport, done, errors, managerNotes);
         if (!batchCancelled && i < items.length - 1) await new Promise(r => setTimeout(r, 1500));
     }
 
     if (lastOk) showLastResultInMainFields(lastOk);
     if (batchResultsForExport.length) document.getElementById('bpDownloadRow').style.display = 'flex';
-    if (batchCancelled)   setFileStatus(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
-    else if (!errors)     setFileStatus(`✅ Готово! Усі ${done} товарів з файлу оброблено та збережено.`, 'ok');
-    else                  setFileStatus(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
+
+    const doneWord = mode === 'file' ? 'товарів з файлу оброблено та збережено' : 'товарів оброблено та збережено';
+    if (batchCancelled)   statusFn(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
+    else if (!errors)     statusFn(`✅ Готово! Усі ${done} ${doneWord}.`, 'ok');
+    else                  statusFn(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
+
+    // Прогрес більше не потрібен: або завершили все, або користувач сам скасував
+    clearBatchProgress();
     lockAll(false);
 }
 
