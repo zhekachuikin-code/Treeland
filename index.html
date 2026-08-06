@@ -1242,6 +1242,7 @@ let batchPaused       = false;
 let batchPauseResolve = null;
 let fileRows       = [];
 let batchResultsForExport = [];
+let batchRunning = false; // захист від подвійного/паралельного запуску пакетної обробки
 
 // ─── MODE TABS ─────────────────────────────────────────────────────────────────
 function switchMode(mode) {
@@ -1881,8 +1882,9 @@ function clampCell(s) {
 }
 
 function downloadBatchResults() {
-    if (!batchResultsForExport.length) return;
-    const rows = batchResultsForExport.map(r => ({
+    const validResults = batchResultsForExport.filter(Boolean);
+    if (!validResults.length) return;
+    const rows = validResults.map(r => ({
         'Артикул':       clampCell(r.article) || '—',
         'URL':           clampCell(r.url)     || '—',
         'Назва RU':      clampCell(r.nameRU),
@@ -1998,6 +2000,7 @@ function discardBatchProgress() {
 }
 
 async function resumeBatchProgress() {
+    if (batchRunning) return;
     const data = loadBatchProgress();
     const banner = document.getElementById('resumeBanner');
     if (banner) banner.classList.remove('visible');
@@ -2153,15 +2156,18 @@ async function runAuto() {
 
 // ─── ПАКЕТНА ОБРОБКА — СПИСОК URL ────────────────────────────────────────────
 async function runBatch() {
+    if (batchRunning) { setBatchStatus('⚠️ Обробка вже виконується — дочекайтесь завершення поточної.', 'err'); return; }
     const raw  = document.getElementById('batchLinks').value;
     const urls = parseBatchLinks(raw);
     if (!urls.length) { setBatchStatus('⚠️ Додайте хоча б одне коректне посилання!', 'err'); return; }
     const managerNotes = document.getElementById('managerNotes').value.trim();
+    discardBatchProgress(); // свіжий старт — прибираємо будь-який старий/чужий збережений прогрес і банер
     await runBatchCore('batch', urls, urls, managerNotes, {});
 }
 
 // ─── ПАКЕТНА ОБРОБКА — ФАЙЛ ──────────────────────────────────────────────────
 async function runFileBatch() {
+    if (batchRunning) { setFileStatus('⚠️ Обробка вже виконується — дочекайтесь завершення поточної.', 'err'); return; }
     if (!fileRows.length) { setFileStatus('⚠️ Спочатку завантажте файл з товарами!', 'err'); return; }
     const items = fileRows.map(r => ({
         type: 'text',
@@ -2171,63 +2177,80 @@ async function runFileBatch() {
     }));
     const labels = items.map(it => it.label);
     const managerNotes = document.getElementById('managerNotes').value.trim();
+    discardBatchProgress(); // свіжий старт — прибираємо будь-який старий/чужий збережений прогрес і банер
     await runBatchCore('file', items, labels, managerNotes, {});
 }
 
 // ─── СПІЛЬНЕ ЯДРО ПАКЕТНОЇ ОБРОБКИ (посилання / файл), з підтримкою відновлення ─
 async function runBatchCore(mode, items, labels, managerNotes, opts) {
+    if (batchRunning) {
+        const statusFn0 = mode === 'file' ? setFileStatus : setBatchStatus;
+        statusFn0('⚠️ Обробка вже виконується — дочекайтесь завершення поточної.', 'err');
+        return;
+    }
+    batchRunning = true;
+
     const statusFn   = mode === 'file' ? setFileStatus : setBatchStatus;
     const startIndex = opts.startIndex || 0;
 
-    batchCancelled = false;
-    lockAll(true);
-    bpResetControls();
-    bpRenderList(labels);
-    bpShow(); bpHideDownload();
+    try {
+        batchCancelled = false;
+        lockAll(true);
+        bpResetControls();
+        bpRenderList(labels);
+        bpShow(); bpHideDownload();
 
-    let done = opts.doneSoFar || 0, errors = opts.errorsSoFar || 0, lastOk = null;
-    batchResultsForExport = (opts.resultsSoFar || []).slice();
+        let done = opts.doneSoFar || 0, errors = opts.errorsSoFar || 0, lastOk = null;
+        // Індексований масив (не push!) — гарантує, що результат товару i завжди лежить
+        // рівно на позиції i, і порядок ніколи не зсувається, навіть якщо якийсь товар
+        // був скасований чи пропущений.
+        batchResultsForExport = new Array(items.length);
+        (opts.resultsSoFar || []).forEach((r, idx) => { if (r) batchResultsForExport[idx] = r; });
 
-    // Відображаємо вже раніше оброблені товари (при відновленні після перезавантаження)
-    for (let k = 0; k < startIndex; k++) {
-        const r = batchResultsForExport[k];
-        if (!r) continue;
-        const isDone = r.ok && r.saveOk !== false;
-        bpSetItem(k, isDone ? 'done' : 'error', r.status || (isDone ? '✓ готово' : '✕ помилка'), r.article);
-        if (r.ok) lastOk = r;
+        // Відображаємо вже раніше оброблені товари (при відновленні після перезавантаження)
+        for (let k = 0; k < startIndex; k++) {
+            const r = batchResultsForExport[k];
+            if (!r) continue;
+            const isDone = r.ok && r.saveOk !== false;
+            bpSetItem(k, isDone ? 'done' : 'error', r.status || (isDone ? '✓ готово' : '✕ помилка'), r.article);
+            if (r.ok) lastOk = r;
+        }
+        bpSetOverall(startIndex, items.length);
+        statusFn(startIndex ? `▶ Відновлено. Обробка ${items.length} товарів (з ${startIndex + 1})...` : `⏳ Обробка ${items.length} товарів...`, '');
+
+        // Одразу зберігаємо початковий стан — щоб список не загубився навіть при ранньому перезавантаженні
+        saveBatchProgress(mode, items, labels, startIndex, batchResultsForExport, done, errors, managerNotes);
+
+        for (let i = startIndex; i < items.length; i++) {
+            if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+            await waitIfPaused();
+            if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+            bpSetItem(i, 'active', 'старт...');
+            const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
+            const res = await processProduct(items[i], managerNotes, false, onStage, () => batchCancelled);
+            if (res.ok)                         { const lbl = res.saveOk === false ? '⚠️ не збережено в таблицю' : '✓ готово'; bpSetItem(i, res.saveOk === false ? 'error' : 'done', lbl, res.article); done++; lastOk = res; batchResultsForExport[i] = { ...res, status: lbl }; if (res.saveOk === false) errors++; }
+            else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
+            else                                 { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport[i] = { ...res, status: '✕ помилка: ' + res.error }; }
+            bpSetOverall(i + 1, items.length);
+            if (!batchCancelled) saveBatchProgress(mode, items, labels, i + 1, batchResultsForExport, done, errors, managerNotes);
+            if (!batchCancelled && i < items.length - 1) await new Promise(r => setTimeout(r, 1500));
+        }
+
+        const validResults = batchResultsForExport.filter(Boolean);
+        if (lastOk) showLastResultInMainFields(lastOk);
+        if (validResults.length) document.getElementById('bpDownloadRow').style.display = 'flex';
+
+        const doneWord = mode === 'file' ? 'товарів з файлу оброблено та збережено' : 'товарів оброблено та збережено';
+        if (batchCancelled)   statusFn(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
+        else if (!errors)     statusFn(`✅ Готово! Усі ${done} ${doneWord}.`, 'ok');
+        else                  statusFn(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
+
+        // Прогрес більше не потрібен: або завершили все, або користувач сам скасував
+        clearBatchProgress();
+    } finally {
+        batchRunning = false;
+        lockAll(false);
     }
-    bpSetOverall(startIndex, items.length);
-    statusFn(startIndex ? `▶ Відновлено. Обробка ${items.length} товарів (з ${startIndex + 1})...` : `⏳ Обробка ${items.length} товарів...`, '');
-
-    // Одразу зберігаємо початковий стан — щоб список не загубився навіть при ранньому перезавантаженні
-    saveBatchProgress(mode, items, labels, startIndex, batchResultsForExport, done, errors, managerNotes);
-
-    for (let i = startIndex; i < items.length; i++) {
-        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
-        await waitIfPaused();
-        if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
-        bpSetItem(i, 'active', 'старт...');
-        const onStage = (si, state) => bpSetItem(i, state === 'error' ? 'error' : 'active', (state === 'error' ? '❌ ' : '⏳ ') + (STAGE_LABELS[si] || ''));
-        const res = await processProduct(items[i], managerNotes, false, onStage, () => batchCancelled);
-        if (res.ok)                         { const lbl = res.saveOk === false ? '⚠️ не збережено в таблицю' : '✓ готово'; bpSetItem(i, res.saveOk === false ? 'error' : 'done', lbl, res.article); done++; lastOk = res; batchResultsForExport.push({ ...res, status: lbl }); if (res.saveOk === false) errors++; }
-        else if (res.error === 'cancelled') { bpSetItem(i, '', 'скасовано'); }
-        else                                 { bpSetItem(i, 'error', '✕ ' + res.error); errors++; batchResultsForExport.push({ ...res, status: '✕ помилка: ' + res.error }); }
-        bpSetOverall(i + 1, items.length);
-        if (!batchCancelled) saveBatchProgress(mode, items, labels, i + 1, batchResultsForExport, done, errors, managerNotes);
-        if (!batchCancelled && i < items.length - 1) await new Promise(r => setTimeout(r, 1500));
-    }
-
-    if (lastOk) showLastResultInMainFields(lastOk);
-    if (batchResultsForExport.length) document.getElementById('bpDownloadRow').style.display = 'flex';
-
-    const doneWord = mode === 'file' ? 'товарів з файлу оброблено та збережено' : 'товарів оброблено та збережено';
-    if (batchCancelled)   statusFn(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
-    else if (!errors)     statusFn(`✅ Готово! Усі ${done} ${doneWord}.`, 'ok');
-    else                  statusFn(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${items.length}.`, '');
-
-    // Прогрес більше не потрібен: або завершили все, або користувач сам скасував
-    clearBatchProgress();
-    lockAll(false);
 }
 
 // ─── FILE IMPORT ──────────────────────────────────────────────────────────────
