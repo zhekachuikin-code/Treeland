@@ -680,6 +680,9 @@
                 <div class="mode-tab" id="tabInsta"  onclick="switchMode('insta')"
                     data-guide-title="📸 Товар/пост Instagram"
                     data-guide-text="Створення рекламного банера/поста та підпису для Instagram і Facebook на основі сторінки товару.">📸 Товар/пост Instagram</div>
+                <div class="mode-tab" id="tabNames"  onclick="switchMode('names')"
+                    data-guide-title="🏷️ Тільки найменування"
+                    data-guide-text="Пакетна обробка списку посилань, де ІІ формує лише найменування товару (УКР+РУС) за правилами — без опису, SEO і запису в таблицю. Найшвидший режим.">🏷️ Тільки найменування</div>
             </div>
 
             <!-- ─── Один товар ─── -->
@@ -807,6 +810,17 @@
                        target="_blank" class="btn btn-ghost">📋 Відкрити таблицю</a>
                 </div>
                 <div id="fileStatus"></div>
+            </div>
+
+            <!-- ─── Тільки найменування (пакет) ─── -->
+            <div class="mode-panel" id="panelNames">
+                <div class="card-label">Список посилань (кожне з нового рядка) — буде згенеровано лише найменування UA+RU за правилами, без опису/SEO/запису в таблицю</div>
+                <textarea id="nameLinks" placeholder="https://prom.ua/product-1&#10;https://prom.ua/product-2&#10;https://prom.ua/product-3"></textarea>
+                <div class="batch-hint" id="nameLinksCount">0 посилань у списку</div>
+                <div class="action-row">
+                    <button class="btn btn-batch" id="namesBtn" onclick="runNameBatch()">🏷️ Сформувати найменування</button>
+                </div>
+                <div id="namesStatus"></div>
             </div>
 
             <!-- ─── Товар/пост Instagram ─── -->
@@ -1243,10 +1257,11 @@ let batchPauseResolve = null;
 let fileRows       = [];
 let batchResultsForExport = [];
 let batchRunning = false; // захист від подвійного/паралельного запуску пакетної обробки
+let batchExportMode = 'full'; // 'full' (опис+SEO+назва) або 'names' (лише найменування) — впливає на формат XLSX
 
 // ─── MODE TABS ─────────────────────────────────────────────────────────────────
 function switchMode(mode) {
-    ['single','group','batch','file','insta'].forEach(m => {
+    ['single','group','batch','file','insta','names'].forEach(m => {
         document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
         document.getElementById('panel' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
     });
@@ -1262,6 +1277,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (gta) gta.addEventListener('input', () => {
         const urls = parseBatchLinks(gta.value);
         document.getElementById('groupLinksCount').textContent = urls.length + ' посилань у списку';
+    });
+    const nta = document.getElementById('nameLinks');
+    if (nta) nta.addEventListener('input', () => {
+        const urls = parseBatchLinks(nta.value);
+        document.getElementById('nameLinksCount').textContent = urls.length + ' посилань у списку';
     });
     // drag-drop for file
     const drop = document.getElementById('fileDrop');
@@ -1288,6 +1308,7 @@ function escapeHtml(s) {
 function setStatus(msg, type)      { const el = document.getElementById('status');      el.textContent = msg; el.className = type || ''; }
 function setBatchStatus(msg, type) { const el = document.getElementById('batchStatus'); el.textContent = msg; el.className = type || ''; }
 function setFileStatus(msg, type)  { const el = document.getElementById('fileStatus');  el.textContent = msg; el.className = type || ''; }
+function setNamesStatus(msg, type) { const el = document.getElementById('namesStatus'); el.textContent = msg; el.className = type || ''; }
 function showBlock(id) { const el = document.getElementById(id); if (el) el.classList.add('visible'); }
 function hideBlock(id) { const el = document.getElementById(id); if (el) el.classList.remove('visible'); }
 
@@ -1300,7 +1321,7 @@ function showArticle(value) {
 }
 
 function lockAll(lock) {
-    ['autoBtn','genBtn','noBrandBtn','seoBtn','nameBtn','saveBtn','batchBtn','fileBtn'].forEach(id => {
+    ['autoBtn','genBtn','noBrandBtn','seoBtn','nameBtn','saveBtn','batchBtn','fileBtn','namesBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = lock;
     });
@@ -1812,6 +1833,43 @@ RU: [назва російською]
 Жодних пояснень, лише два рядки.`;
 }
 
+// ─── ПРОМПТ ДЛЯ РЕЖИМУ "ТІЛЬКИ НАЙМЕНУВАННЯ" (пакетна обробка, без опису/SEO) ──
+// Формує назву товару напряму із сирого тексту сторінки (без проміжного опису),
+// за правилами ТЗ "Правила формування найменувань товарів".
+function buildNameOnlyPrompt(pageText) {
+    return `Ти — товарознавець інтернет-магазину. Твоє завдання — скласти правильне найменування товару українською і російською мовами на основі сирого тексту сторінки товару нижче.
+
+ТЕКСТ СТОРІНКИ ТОВАРУ:
+${truncateForContext(pageText, 6000)}
+
+ПРАВИЛА ФОРМУВАННЯ НАЗВИ:
+
+1. Структура (дотримуйся порядку, пропускай блок, якщо даних немає):
+   [Тип товару] [Бренд] [Модель/серія] [Основна характеристика] [Розмір/об'єм] [Додаткові характеристики]
+
+2. Порядок важливості характеристик: розмір → об'єм → потужність → робочий тиск → матеріал → тип підключення → конструктивна особливість → інше.
+
+3. Формат одиниць виміру — через пробіл від числа: мм, м, л, кВт, Вт, бар, °C (НЕ "80л", а "80 л"). Для розмірів використовуй знак "×" (500×800 мм), не "x" і не "*".
+
+4. Бренд — тільки в офіційному написанні (як у джерелі), не перекладай і не змінюй.
+
+5. Вибір формулювання типу товару (наприклад "бойлер" чи "водонагрівач", "насос" чи "насосна станція"): обери природний і найбільш ужитковий у побутовому мовленні варіант, спираючись на свої загальні знання про те, як цей товар зазвичай шукають і називають в україномовному та російськомовному e-commerce. Це орієнтовна експертна оцінка, а НЕ результат перевірки в Google Trends (реальних даних Trends у тебе немає) — тому не пиши в назві нічого на кшталт "(за Trends)" і не вигадуй цифри популярності.
+
+6. ЗАБОРОНЕНО додавати в назву: купити, ціна, недорого, замовити, доставка, Україна, інтернет-магазин, офіційний, найкращий, якісний, надійний, економічний, сучасний, преміальний, популярний — і будь-які інші рекламні або SEO-слова, яких немає у фактичному описі товару.
+
+7. ЗАБОРОНЕНО дублювати одне й те саме ключове слово двічі (наприклад "Бойлер водонагрівач Midea бойлер").
+
+8. ЗАБОРОНЕНО лапки будь-якого виду.
+
+9. Пріоритет при конфлікті: точність товару > зрозумілість для покупця > природність формулювання > SEO. Ніколи не жертвуй точністю заради ключових слів.
+
+10. Використовуй лише ті характеристики, які реально є в тексті сторінки. Нічого не вигадуй.
+
+Виведи СТРОГО у форматі (без пояснень, без нумерації, без markdown):
+UA: [назва українською]
+RU: [назва російською]`;
+}
+
 function buildSourceTextFromRow(row) {
     let txt = `Назва товару: ${row.name}\n`;
     if (row.price) txt += `Ціна: ${row.price}\n`;
@@ -1884,25 +1942,42 @@ function clampCell(s) {
 function downloadBatchResults() {
     const validResults = batchResultsForExport.filter(Boolean);
     if (!validResults.length) return;
-    const rows = validResults.map(r => ({
-        'Артикул':       clampCell(r.article) || '—',
-        'URL':           clampCell(r.url)     || '—',
-        'Назва RU':      clampCell(r.nameRU),
-        'Назва UA':      clampCell(r.nameUA),
-        'SEO-ключі RU':  clampCell(r.seoRU),
-        'SEO-ключі UA':  clampCell(r.seoUA),
-        'Опис RU':       clampCell(r.descRU),
-        'Опис UA':       clampCell(r.descUA)
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [
-        { wch: 14 }, { wch: 50 }, { wch: 45 }, { wch: 45 },
-        { wch: 60 }, { wch: 60 }, { wch: 80 }, { wch: 80 }
-    ];
     const wb = XLSX.utils.book_new();
+    let ws, fileTag;
+
+    if (batchExportMode === 'names') {
+        const rows = validResults.map(r => ({
+            'Артикул':    clampCell(r.article) || '—',
+            'URL':        clampCell(r.url)      || '—',
+            'Назва UA':   clampCell(r.nameUA),
+            'Назва RU':   clampCell(r.nameRU),
+            'Статус':     clampCell(r.status)
+        }));
+        ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 14 }, { wch: 50 }, { wch: 55 }, { wch: 55 }, { wch: 24 }];
+        fileTag = 'treeland-names';
+    } else {
+        const rows = validResults.map(r => ({
+            'Артикул':       clampCell(r.article) || '—',
+            'URL':           clampCell(r.url)     || '—',
+            'Назва RU':      clampCell(r.nameRU),
+            'Назва UA':      clampCell(r.nameUA),
+            'SEO-ключі RU':  clampCell(r.seoRU),
+            'SEO-ключі UA':  clampCell(r.seoUA),
+            'Опис RU':       clampCell(r.descRU),
+            'Опис UA':       clampCell(r.descUA)
+        }));
+        ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [
+            { wch: 14 }, { wch: 50 }, { wch: 45 }, { wch: 45 },
+            { wch: 60 }, { wch: 60 }, { wch: 80 }, { wch: 80 }
+        ];
+        fileTag = 'treeland-results';
+    }
+
     XLSX.utils.book_append_sheet(wb, ws, 'Результати');
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
-    XLSX.writeFile(wb, `treeland-results-${stamp}.xlsx`);
+    XLSX.writeFile(wb, `${fileTag}-${stamp}.xlsx`);
 }
 
 function cancelBatch() {
@@ -2186,6 +2261,87 @@ async function runFileBatch() {
     await runBatchCore('file', items, labels, managerNotes, {});
 }
 
+// ─── РЕЖИМ "ТІЛЬКИ НАЙМЕНУВАННЯ" ─────────────────────────────────────────────
+// Мінімальний пайплайн: парсинг сторінки → ОДИН виклик ІІ на назву (без опису,
+// без SEO, без запису в Google Таблицю). Не використовує processProduct/
+// runBatchCore, щоб не чіпати основний ланцюжок.
+async function processNameOnly(url, onStage, isCancelled) {
+    const result = { ok: false, article: '', url, nameUA: '', nameRU: '' };
+
+    onStage('active', '⏳ Завантажую сторінку...');
+    const pageText = await fetchPageText(url);
+    if (isCancelled()) { result.error = 'cancelled'; return result; }
+    if (!pageText) { result.error = 'не вдалося прочитати сторінку'; return result; }
+    result.article = extractArticle(pageText);
+
+    onStage('active', '⏳ Формую найменування...');
+    const nameRes = await callServer(buildNameOnlyPrompt(pageText));
+    if (isCancelled()) { result.error = 'cancelled'; return result; }
+    if (!nameRes.ok) { result.error = 'помилка генерації назви'; return result; }
+
+    const lines = nameRes.text.split('\n');
+    result.nameUA = (lines.find(l => l.startsWith('UA:')) || '').replace('UA:', '').trim().replace(/["«»""]/g, '');
+    result.nameRU = (lines.find(l => l.startsWith('RU:')) || '').replace('RU:', '').trim().replace(/["«»""]/g, '');
+    if (!result.nameUA && !result.nameRU) { result.error = 'порожня відповідь ІІ'; return result; }
+
+    result.ok = true;
+    return result;
+}
+
+async function runNameBatch() {
+    if (batchRunning) { setNamesStatus('⚠️ Обробка вже виконується — дочекайтесь завершення поточної.', 'err'); return; }
+    const raw  = document.getElementById('nameLinks').value;
+    const urls = parseBatchLinks(raw);
+    if (urls.length === 0) { setNamesStatus('⚠️ Вставте хоча б одне посилання на товар!', 'err'); return; }
+
+    batchRunning = true;
+    batchExportMode = 'names';
+    batchCancelled = false;
+    lockAll(true);
+    bpResetControls();
+    bpRenderList(urls);
+    bpShow(); bpHideDownload();
+    setNamesStatus('');
+
+    let done = 0, errors = 0;
+    batchResultsForExport = new Array(urls.length);
+    bpSetOverall(0, urls.length);
+
+    try {
+        for (let i = 0; i < urls.length; i++) {
+            if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+            await waitIfPaused();
+            if (batchCancelled) { bpSetItem(i, '', 'скасовано'); continue; }
+
+            const onStage = (state, msg) => bpSetItem(i, state === 'error' ? 'error' : 'active', msg || '');
+            const res = await processNameOnly(urls[i], onStage, () => batchCancelled);
+
+            if (res.ok) {
+                bpSetItem(i, 'done', '✓ готово', res.article);
+                done++;
+                batchResultsForExport[i] = { ...res, status: '✓ готово' };
+            } else {
+                bpSetItem(i, 'error', '✕ ' + res.error);
+                errors++;
+                batchResultsForExport[i] = { ...res, status: '✕ помилка: ' + res.error };
+            }
+            bpSetOverall(done, urls.length);
+
+            if (!batchCancelled && i < urls.length - 1) await new Promise(r => setTimeout(r, 800));
+        }
+
+        const validResults = batchResultsForExport.filter(Boolean);
+        if (batchCancelled)      setNamesStatus(`⛔ Скасовано. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, '');
+        else if (errors > 0)     setNamesStatus(`⚠️ Завершено з помилками. Успішно: ${done}, помилок: ${errors}, з ${urls.length}.`, 'err');
+        else                     setNamesStatus(`✅ Завершено! Успішно оброблено: ${done} з ${urls.length}.`, 'ok');
+
+        if (validResults.length) document.getElementById('bpDownloadRow').style.display = '';
+    } finally {
+        batchRunning = false;
+        lockAll(false);
+    }
+}
+
 // ─── СПІЛЬНЕ ЯДРО ПАКЕТНОЇ ОБРОБКИ (посилання / файл), з підтримкою відновлення ─
 async function runBatchCore(mode, items, labels, managerNotes, opts) {
     if (batchRunning) {
@@ -2194,6 +2350,7 @@ async function runBatchCore(mode, items, labels, managerNotes, opts) {
         return;
     }
     batchRunning = true;
+    batchExportMode = 'full';
 
     const statusFn   = mode === 'file' ? setFileStatus : setBatchStatus;
     const startIndex = opts.startIndex || 0;
