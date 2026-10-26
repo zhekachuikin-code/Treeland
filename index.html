@@ -297,6 +297,8 @@
         .toggle-item:hover { border-color: var(--green-dim); }
         .toggle-item.off { opacity: 0.45; }
         .toggle-item.off .ti-name { text-decoration: line-through; color: var(--text-muted); }
+        #tog-showphoto.off { opacity: 0.8; }
+        #tog-showphoto.off .ti-name { text-decoration: none; }
         .ti-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
         .ti-icon { font-size: 17px; flex-shrink: 0; }
         .ti-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -1019,6 +1021,20 @@
             </div>
         </div>
 
+        <!-- ── ПЕРЕМИКАЧ: фото в описі ── -->
+        <div class="toggle-item off" id="tog-showphoto" onclick="toggleShowPhoto()" style="max-width:340px; margin-bottom:12px;"
+            data-guide-title="🖼 Показувати фото в описі"
+            data-guide-text="За замовчуванням блок з фото в описі прихований (display:none), але лишається в коді. Увімкніть — і наступні згенеровані описи матимуть видиме фото. Вже готові описи не змінюються.">
+            <div class="ti-left">
+                <span class="ti-icon">🖼</span>
+                <div class="ti-text">
+                    <span class="ti-name">Показувати фото в описі</span>
+                    <span class="ti-hint">За замовчуванням приховане</span>
+                </div>
+            </div>
+            <div class="tswitch"></div>
+        </div>
+
         <!-- ── АВТО ПРОГРЕС ── -->
         <div id="autoProgress">
             <div class="ap-header">
@@ -1537,6 +1553,9 @@ fetch(SERVER_URL.replace('/api/generate', '/'), { mode: 'no-cors' }).catch(() =>
 // промпті). Тут ми лише акуратно вставляємо TREELAND_STYLES ВСЕРЕДИНУ цих тегів,
 // щоб фінальний результат був єдиним цілим. Якщо AI забула теги — додаємо самі.
 function wrapTreelandOutput(aiText) {
+    return applyPhotoVisibility(wrapTreelandOutputRaw(aiText));
+}
+function wrapTreelandOutputRaw(aiText) {
     const t = (aiText || '').trim();
     const brandCss = (BRANDS[currentBrand] || BRANDS.treeland).css;
     const openTag  = /^<promhtml>/i;
@@ -1546,6 +1565,19 @@ function wrapTreelandOutput(aiText) {
         return '<promhtml>' + brandCss + inner + '</promhtml>';
     }
     return '<promhtml>' + brandCss + t + '</promhtml>';
+}
+
+// ─── Видимість блоку з фото в описі ────────────────────────────────────────────
+// За замовчуванням блок «*-hero-img» прихований (display:none) — він лишається в коді.
+// Детермінована пост-обробка: ставимо/прибираємо display:none незалежно від відповіді ІІ.
+let showPhoto = false;
+function toggleShowPhoto() {
+    showPhoto = !showPhoto;
+    document.getElementById('tog-showphoto').classList.toggle('off', !showPhoto);
+}
+function applyPhotoVisibility(html) {
+    return html.replace(/<div\b[^>]*class="([^"]*-hero-img[^"]*)"[^>]*>/,
+        (m, cls) => `<div class="${cls}"${showPhoto ? '' : ' style="display:none"'}>`);
 }
 
 // ─── PROMPTS ──────────────────────────────────────────────────────────────────
