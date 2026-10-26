@@ -468,14 +468,14 @@
         .bp-item.error .bp-item-stage { color: #f87171; }
         .bp-item-article { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); white-space: nowrap; }
 
-        #status {
+        #status, #manualStatus {
             font-size: 12px; color: var(--text-muted);
             min-height: 16px;
             font-family: 'JetBrains Mono', monospace;
             margin-top: 10px;
         }
-        #status.ok  { color: var(--green); }
-        #status.err { color: #f87171; }
+        #status.ok, #manualStatus.ok  { color: var(--green); }
+        #status.err, #manualStatus.err { color: #f87171; }
 
         .notes-card {
             background: var(--surface);
@@ -677,6 +677,9 @@
                 <div class="mode-tab" id="tabFile"   onclick="switchMode('file')"
                     data-guide-step="8" data-guide-title="📁 Файл (XLS/CSV)"
                     data-guide-text="Завантажте файл XLS/CSV зі списком товарів — AI обробить усі рядки автоматично.">📁 Файл (XLS/CSV)</div>
+                <div class="mode-tab" id="tabManual" onclick="switchMode('manual')"
+                    data-guide-title="✍️ Свій опис"
+                    data-guide-text="Генерація за нотатками, введеними вручну: назва, пара характеристик, будь-який неструктурований текст. AI складе повний опис, SEO та назву без вигадок.">✍️ Свій опис</div>
                 <div class="mode-tab" id="tabInsta"  onclick="switchMode('insta')"
                     data-guide-title="📸 Товар/пост Instagram"
                     data-guide-text="Створення рекламного банера/поста та підпису для Instagram і Facebook на основі сторінки товару.">📸 Товар/пост Instagram</div>
@@ -823,6 +826,68 @@
                 <div id="namesStatus"></div>
             </div>
 
+            <!-- ─── Свій опис (ручні нотатки) ─── -->
+            <div class="mode-panel" id="panelManual">
+                <div class="card-label">Назва товару (необов'язково, але бажано)</div>
+                <div class="input-row">
+                    <input type="text" id="manualName" placeholder="Наприклад: Дитячий будиночок з гіркою"
+                        data-guide-title="Назва товару"
+                        data-guide-text="Якщо вказати назву — AI відштовхуватиметься від неї. Якщо порожньо — візьме з нотаток.">
+                </div>
+
+                <div class="card-label" style="margin-top:14px;">Артикул (необов'язково — для запису в таблицю)</div>
+                <div class="input-row">
+                    <input type="text" id="manualArticle" placeholder="Порожньо = AI спробує знайти в нотатках, інакше «—»"
+                        data-guide-title="Артикул"
+                        data-guide-text="Потрібен для запису в Google Таблицю. Якщо не вказати — шукається в тексті нотаток.">
+                </div>
+
+                <div class="card-label" style="margin-top:14px;">Посилання на фото (необов'язково)</div>
+                <div class="input-row">
+                    <input type="text" id="manualImage" placeholder="https://... .jpg — порожньо = логотип бренду"
+                        data-guide-title="Фото товару"
+                        data-guide-text="Пряме посилання на зображення піде в блок фото (він за замовчуванням прихований display:none). Якщо порожньо — підставиться логотип бренду.">
+                </div>
+
+                <div class="card-label" style="margin-top:14px;">Нотатки про товар (довільний текст)</div>
+                <textarea id="manualNotes" oninput="onManualNotesChange()"
+                    placeholder="Просто накидайте все, що знаєте про товар: що це, розміри, матеріал, вага, навантаження, комплектація, для чого, переваги...&#10;Можна українською або російською, без форматування."
+                    style="width:100%;min-height:170px;max-height:360px;font-family:'JetBrains Mono', monospace;font-size:12px;line-height:1.65;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);resize:vertical;outline:none;"
+                    data-guide-title="Нотатки"
+                    data-guide-text="AI використає ТІЛЬКИ ці факти й нічого не вигадуватиме. Чим більше даних — тим повніший опис. Примітки менеджера нижче теж враховуються."></textarea>
+                <div id="manualNotesCount" style="font-size:11px;color:var(--text-muted);margin-top:4px;">0 символів</div>
+
+                <div class="article-badge" id="m_articleBadge">
+                    <span class="article-badge-label">Артикул</span>
+                    <span class="article-badge-value" id="m_articleValue">—</span>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-auto"    id="m_autoBtn"    onclick="runManualAuto()"
+                        data-guide-title="⚡ Авто"
+                        data-guide-text="Цикл за нотатками: опис УКР+РУС → SEO → назва. У таблицю — окремо кнопкою «📊 В таблицю».">⚡ Авто</button>
+                    <button class="btn btn-primary" id="m_genBtn"     onclick="generateManual(false)"
+                        data-guide-title="Створити опис"
+                        data-guide-text="HTML-опис УКР + РУС за вашими нотатками.">✨ Створити опис</button>
+                    <button class="btn btn-nobrand" id="m_noBrandBtn" onclick="generateManual(true)"
+                        data-guide-title="🚫 БЕЗ БРЕНДА"
+                        data-guide-text="Той самий опис, але без згадок бренду/виробника.">🚫 БЕЗ БРЕНДА</button>
+                    <button class="btn btn-seo"     id="m_seoBtn"     onclick="generateSEO()"  disabled
+                        data-guide-title="SEO-ключі"
+                        data-guide-text="Активна після створення опису.">🔑 SEO-ключі</button>
+                    <button class="btn btn-name"    id="m_nameBtn"    onclick="generateName()" disabled
+                        data-guide-title="Покращити найменування"
+                        data-guide-text="SEO-назва на основі опису і ключів.">✦ Назва</button>
+                    <button class="btn btn-sheets"  id="m_saveBtn"    onclick="saveToSheets()" disabled
+                        data-guide-title="В таблицю"
+                        data-guide-text="Запише дані разом з артикулом (без посилання — його немає).">📊 В таблицю</button>
+                    <a href="https://docs.google.com/spreadsheets/d/1yaDmDy4bEvtOnmTHML1T2gpVXW9gCnv8MXvz9_yAulY/edit"
+                       target="_blank" class="btn btn-ghost"
+                       data-guide-title="📋 Відкрити таблицю"
+                       data-guide-text="Відкриває Google Таблицю в новій вкладці.">📋 Відкрити таблицю</a>
+                </div>
+                <div id="manualStatus"></div>
+            </div>
+
             <!-- ─── Товар/пост Instagram ─── -->
             <div class="mode-panel" id="panelInsta">
                 <div class="card-label">Посилання на товар (готова сторінка на сайті)</div>
@@ -965,7 +1030,6 @@
                 <div class="ap-step" id="apStep1"><div class="ap-dot" id="apDot1">2</div><span>Опис УКР + РУС (HTML)</span></div>
                 <div class="ap-step" id="apStep2"><div class="ap-dot" id="apDot2">3</div><span>SEO-ключі УКР + РУС</span></div>
                 <div class="ap-step" id="apStep3"><div class="ap-dot" id="apDot3">4</div><span>Покращення найменування</span></div>
-                <div class="ap-step" id="apStep4"><div class="ap-dot" id="apDot4">5</div><span>Збереження до таблиці</span></div>
             </div>
             <div class="ap-bar-wrap"><div class="ap-bar" id="apBar"></div></div>
             <div class="ap-msg" id="apMsg"></div>
@@ -1250,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', () => checkBatchResume());
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let currentArticle = '';
 let _noBrandMode   = false;
+let currentSourceUrl = null;   // null = брати з поля «Посилання»; '' = ручний режим (без URL)
 let autoCancelled  = false;
 let batchCancelled = false;
 let batchPaused       = false;
@@ -1261,7 +1326,7 @@ let batchExportMode = 'full'; // 'full' (опис+SEO+назва) або 'names'
 
 // ─── MODE TABS ─────────────────────────────────────────────────────────────────
 function switchMode(mode) {
-    ['single','group','batch','file','insta','names'].forEach(m => {
+    ['single','group','batch','file','manual','insta','names'].forEach(m => {
         document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
         document.getElementById('panel' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
     });
@@ -1305,7 +1370,9 @@ function escapeHtml(s) {
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-function setStatus(msg, type)      { const el = document.getElementById('status');      el.textContent = msg; el.className = type || ''; }
+function setStatus(msg, type)      {
+    ['status', 'manualStatus'].forEach(id => { const el = document.getElementById(id); if (el) { el.textContent = msg; el.className = type || ''; } });
+}
 function setBatchStatus(msg, type) { const el = document.getElementById('batchStatus'); el.textContent = msg; el.className = type || ''; }
 function setFileStatus(msg, type)  { const el = document.getElementById('fileStatus');  el.textContent = msg; el.className = type || ''; }
 function setNamesStatus(msg, type) { const el = document.getElementById('namesStatus'); el.textContent = msg; el.className = type || ''; }
@@ -1316,8 +1383,14 @@ function showArticle(value) {
     currentArticle = value || '';
     const badge = document.getElementById('articleBadge');
     const val   = document.getElementById('articleValue');
-    if (currentArticle) { val.textContent = currentArticle; badge.classList.add('visible'); }
-    else { badge.classList.remove('visible'); }
+    const mBadge = document.getElementById('m_articleBadge');
+    const mVal   = document.getElementById('m_articleValue');
+    if (currentArticle) {
+        val.textContent = currentArticle; badge.classList.add('visible');
+        if (mBadge) { mVal.textContent = currentArticle; mBadge.classList.add('visible'); }
+    } else {
+        badge.classList.remove('visible'); if (mBadge) mBadge.classList.remove('visible');
+    }
 }
 
 function lockAll(lock) {
@@ -1332,6 +1405,31 @@ function clearResults() {
     document.getElementById('nameSectionHeader').classList.remove('visible');
     ['resUA','resRU','seoUA','seoRU','nameUA','nameRU'].forEach(id => { document.getElementById(id).value = ''; });
     showArticle('');
+}
+
+// Показує те, що вже готово (без очищення) — викликається після кожного етапу
+function showPartialResult(res) {
+    showArticle(res.article);
+    if (res.descUA) { document.getElementById('resUA').value = res.descUA; showBlock('blockUA'); }
+    if (res.descRU) { document.getElementById('resRU').value = res.descRU; showBlock('blockRU'); }
+    if (res.seoUA)  { document.getElementById('seoUA').value = res.seoUA; showBlock('blockSEO-UA'); }
+    if (res.seoRU)  { document.getElementById('seoRU').value = res.seoRU; showBlock('blockSEO-RU'); }
+    if (res.nameUA || res.nameRU) {
+        document.getElementById('nameUA').value = res.nameUA || '';
+        document.getElementById('nameRU').value = res.nameRU || '';
+        document.getElementById('nameSectionHeader').classList.add('visible');
+        showBlock('blockNameUA'); showBlock('blockNameRU');
+    }
+}
+
+// Після збою/скасування: готові блоки лишаються, а кнопки для дозапуску розблоковуються
+function unlockAfterPartial(res) {
+    lockAll(false);
+    if (res && res.descUA) {
+        document.getElementById('seoBtn').disabled  = false;
+        document.getElementById('nameBtn').disabled = false;
+        document.getElementById('saveBtn').disabled = false;
+    }
 }
 
 function showLastResultInMainFields(res) {
@@ -1400,19 +1498,39 @@ async function fetchPageText(url) {
     } catch (e) { return null; }
 }
 
-async function callServer(prompt) {
+// Сервер на Render (безкоштовний план) «засинає» і може прокидатися 30–60 с.
+// Таймаут + одна автоматична повторна спроба + причина збою у статусі.
+const SERVER_TIMEOUT_MS = 150000;
+let lastServerError = '';
+async function callServer(prompt, attempt = 0) {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), SERVER_TIMEOUT_MS);
     try {
         const resp = await fetch(SERVER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
+            body: JSON.stringify({ prompt }),
+            signal: ctrl.signal
         });
-        const data = await resp.json();
-        return data.ok ? { ok: true, text: data.text } : { ok: false, text: '' };
+        let data = null;
+        try { data = await resp.json(); } catch (je) { /* не JSON */ }
+        clearTimeout(timer);
+        if (data && data.ok && data.text) return { ok: true, text: data.text };
+        lastServerError = `HTTP ${resp.status}` + (data && (data.error || data.message) ? ': ' + String(data.error || data.message).slice(0, 160) : (data && data.ok ? ': порожня відповідь' : ''));
     } catch (e) {
-        return { ok: false, text: '' };
+        clearTimeout(timer);
+        lastServerError = e.name === 'AbortError' ? `таймаут ${SERVER_TIMEOUT_MS / 1000} с` : 'мережева помилка: ' + e.message;
     }
+    if (attempt < 1) {
+        await new Promise(r => setTimeout(r, 3000));
+        return callServer(prompt, attempt + 1);
+    }
+    return { ok: false, text: '' };
 }
+
+// «Будимо» сервер при відкритті сторінки, щоб перший запит не чекав холодного старту.
+// 404 на «/» у консолі — це нормально: сервер відповів, отже прокинувся.
+fetch(SERVER_URL.replace('/api/generate', '/'), { mode: 'no-cors' }).catch(() => {});
 
 // ─── PROMHTML ОБГОРТКА ────────────────────────────────────────────────────────
 // AI сама дописує <promhtml>...</promhtml> навколо HTML-опису (за інструкцією в
@@ -1889,7 +2007,7 @@ function apSetStep(idx, state) {
 }
 function apSetBar(pct) { document.getElementById('apBar').style.width = pct + '%'; }
 function apSetMsg(msg) { document.getElementById('apMsg').textContent = msg; }
-function apReset() { for (let i = 0; i < 5; i++) apSetStep(i, ''); apSetBar(0); apSetMsg(''); }
+function apReset() { for (let i = 0; i < 4; i++) apSetStep(i, ''); apSetBar(0); apSetMsg(''); }
 function cancelAuto() { autoCancelled = true; apSetMsg('⛔ Скасовано користувачем'); document.getElementById('apCancelBtn').disabled = true; }
 
 // ─── BATCH PROGRESS UI ───────────────────────────────────────────────────────
@@ -2104,7 +2222,8 @@ async function resumeBatchProgress() {
 }
 
 // ─── CORE: ОБРОБКА ОДНОГО ТОВАРУ (TreeLand) ──────────────────────────────────
-async function processProduct(source, managerNotes, noBrand, onStage, isCancelled, saveToSheet = true) {
+async function processProduct(source, managerNotes, noBrand, onStage, isCancelled, saveToSheet = false, onPartial) {
+    const partial = () => { try { if (onPartial) onPartial(result); } catch (e) { console.warn('onPartial:', e); } };
     const isUrl = typeof source === 'string';
     const url   = isUrl ? source : (source.label || '');
     const result = { ok: false, article: '', url, nameUA: '', nameRU: '', descUA: '', descRU: '', seoUA: '', seoRU: '' };
@@ -2128,29 +2247,31 @@ async function processProduct(source, managerNotes, noBrand, onStage, isCancelle
     onStage(1, 'active', '⏳ Генерую HTML-опис (УКР)...');
     const ua = await callServer(buildPrompt(pageText, 'ukrainian', managerNotes, noBrand));
     if (isCancelled()) { result.error = 'cancelled'; return result; }
-    if (!ua.ok) { onStage(1, 'error', '❌ Помилка генерації УКР'); result.error = 'desc_ua_failed'; return result; }
+    if (!ua.ok) { onStage(1, 'error', '❌ Помилка генерації УКР — ' + lastServerError); result.error = 'desc_ua_failed'; return result; }
+    result.descUA = wrapTreelandOutput(ua.text);
+    partial();   // УКР опис одразу на екран
 
     // Опис РУС
     onStage(1, 'active', '⏳ Генерую опис (РУС)...');
     const ru = await callServer(buildPrompt(pageText, 'russian', managerNotes, noBrand));
     if (isCancelled()) { result.error = 'cancelled'; return result; }
-    if (!ru.ok) { onStage(1, 'error', '❌ Помилка генерації РУС'); result.error = 'desc_ru_failed'; return result; }
+    if (!ru.ok) { onStage(1, 'error', '❌ Помилка генерації РУС — ' + lastServerError); result.error = 'desc_ru_failed'; return result; }
 
-    result.descUA = wrapTreelandOutput(ua.text);
     result.descRU = wrapTreelandOutput(ru.text);
     onStage(1, 'done');
+    partial();   // РУС опис
 
     // SEO УКР
     onStage(2, 'active', '⏳ Генерую SEO-ключі (УКР)...');
     const seoUa = await callServer(buildSEOPrompt(ua.text, 'ua', noBrand));
     if (isCancelled()) { result.error = 'cancelled'; return result; }
-    if (seoUa.ok) result.seoUA = seoUa.text;
+    if (seoUa.ok) { result.seoUA = seoUa.text; partial(); }   // SEO УКР
 
     // SEO РУС
     onStage(2, 'active', '⏳ Генерую SEO-ключі (РУС)...');
     const seoRu = await callServer(buildSEOPrompt(ru.text, 'ru', noBrand));
     if (isCancelled()) { result.error = 'cancelled'; return result; }
-    if (seoRu.ok) result.seoRU = seoRu.text;
+    if (seoRu.ok) { result.seoRU = seoRu.text; partial(); }   // SEO РУС
     onStage(2, 'done');
 
     // Назва
@@ -2162,41 +2283,14 @@ async function processProduct(source, managerNotes, noBrand, onStage, isCancelle
         result.nameUA = (lines.find(l => l.startsWith('UA:')) || '').replace('UA:', '').trim().replace(/["«»""]/g, '');
         result.nameRU = (lines.find(l => l.startsWith('RU:')) || '').replace('RU:', '').trim().replace(/["«»""]/g, '');
         onStage(3, 'done');
+        partial();   // Назва
     } else {
         onStage(3, 'error', '⚠️ Помилка генерації назви');
     }
 
-    // Збереження з повторними спробами (пропускається для пакетної обробки — saveToSheet = false)
-    let saveOk = true;
-    if (saveToSheet) {
-        onStage(4, 'active', '⏳ Зберігаю до Google Таблиці...');
-        const savePayload = JSON.stringify({
-            article: result.article, url,
-            nameUA: result.nameUA, nameRU: result.nameRU,
-            descUA: result.descUA, descRU: result.descRU,
-            seoUA:  result.seoUA,  seoRU:  result.seoRU,
-        });
-        saveOk = false;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                if (attempt > 0) await new Promise(r => setTimeout(r, 2500 * attempt));
-                await fetch(SHEETS_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: savePayload
-                });
-                saveOk = true;
-                break;
-            } catch (e) { /* мережева помилка — спробуємо ще раз */ }
-        }
-        if (saveOk) onStage(4, 'done');
-        else        onStage(4, 'error', '⚠️ Помилка запису до таблиці (перевір XLSX)');
-    } else {
-        onStage(4, 'done');
-    }
-
-    result.ok     = true;   // дані оброблено — включаємо до XLSX незалежно
-    result.saveOk = saveOk; // окремий прапор для статусу таблиці
+    // Збереження до таблиці більше не робиться автоматично — лише вручну кнопкою «📊 В таблицю».
+    result.ok     = true;   // дані оброблено — включаємо до XLSX
+    result.saveOk = true;
     return result;
 }
 
@@ -2207,6 +2301,7 @@ async function runAuto() {
     if (!url.startsWith('http')){ setStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
 
     autoCancelled = false;
+    currentSourceUrl = null;
     lockAll(true);
     apReset(); apShow();
     document.getElementById('apCancelBtn').disabled = false;
@@ -2217,16 +2312,16 @@ async function runAuto() {
     const onStage = (idx, state, msg) => {
         apSetStep(idx, state);
         if (msg) apSetMsg(msg);
-        apSetBar(Math.min(100, (idx + (state === 'done' ? 1 : 0.4)) * 20));
+        apSetBar(Math.min(100, (idx + (state === 'done' ? 1 : 0.4)) * 25));
     };
 
-    const res = await processProduct(url, managerNotes, false, onStage, () => autoCancelled);
+    const res = await processProduct(url, managerNotes, false, onStage, () => autoCancelled, false, showPartialResult);
 
-    if (autoCancelled) { apSetMsg('⛔ Авто-режим скасовано'); setStatus('⛔ Скасовано.', ''); lockAll(false); return; }
-    if (!res.ok) { setStatus('❌ Помилка обробки товару: ' + (res.error || 'unknown'), 'err'); lockAll(false); return; }
+    if (autoCancelled) { apSetMsg('⛔ Авто-режим скасовано'); setStatus('⛔ Скасовано.', ''); unlockAfterPartial(res); return; }
+    if (!res.ok) { setStatus('❌ Помилка обробки товару: ' + (res.error || 'unknown'), 'err'); unlockAfterPartial(res); return; }
 
     showLastResultInMainFields(res);
-    apSetMsg('✅ Все готово! Дані збережено до таблиці.');
+    apSetMsg('✅ Все готово! Для запису в таблицю натисніть «📊 В таблицю».');
     setStatus(`✅ Авто-режим завершено! Артикул: ${res.article}`, 'ok');
     lockAll(false);
     document.getElementById('seoBtn').disabled  = false;
@@ -2504,6 +2599,7 @@ async function generate(noBrand) {
     if (!url.startsWith('http')) { setStatus('⚠️ Посилання має починатися з http://', 'err'); return; }
 
     _noBrandMode = noBrand;
+    currentSourceUrl = null;
     const managerNotes = document.getElementById('managerNotes').value.trim();
     const modeLabel = noBrand ? ' [БЕЗ БРЕНДА]' : '';
 
@@ -2622,7 +2718,7 @@ async function saveToSheets() {
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
                 article: currentArticle,
-                url:     document.getElementById('link').value   || '',
+                url:     currentSourceUrl !== null ? currentSourceUrl : (document.getElementById('link').value || ''),
                 nameUA:  document.getElementById('nameUA').value || '',
                 nameRU:  document.getElementById('nameRU').value || '',
                 descUA:  document.getElementById('resUA').value  || '',
@@ -2737,6 +2833,131 @@ async function runGroup(noBrand) {
 
 let instaCt = 'banner';
 let instaElToggles = { cta: true, price: true, bottombar: true, icons: true };
+
+// ─── СВІЙ ОПИС (ручні нотатки) ───────────────────────────────────────────────
+// Дзеркалимо стан кнопок між вкладкою «Один товар» і «Свій опис», щоб існуючі
+// функції (generateSEO, generateName, saveToSheets, lockAll...) працювали для обох.
+(function mirrorManualButtons() {
+    const desc = Object.getOwnPropertyDescriptor(HTMLButtonElement.prototype, 'disabled');
+    [['autoBtn','m_autoBtn'], ['genBtn','m_genBtn'], ['noBrandBtn','m_noBrandBtn'],
+     ['seoBtn','m_seoBtn'], ['nameBtn','m_nameBtn'], ['saveBtn','m_saveBtn']].forEach(([a, b]) => {
+        const elA = document.getElementById(a), elB = document.getElementById(b);
+        if (!elA || !elB) return;
+        Object.defineProperty(elA, 'disabled', {
+            configurable: true,
+            get() { return desc.get.call(elA); },
+            set(v) { desc.set.call(elA, v); desc.set.call(elB, v); }
+        });
+    });
+})();
+
+function onManualNotesChange() {
+    document.getElementById('manualNotesCount').textContent = document.getElementById('manualNotes').value.length + ' символів';
+}
+
+function readManualInput() {
+    return {
+        name:    document.getElementById('manualName').value.trim(),
+        article: document.getElementById('manualArticle').value.trim(),
+        image:   document.getElementById('manualImage').value.trim(),
+        notes:   document.getElementById('manualNotes').value.trim()
+    };
+}
+
+function validateManualInput(inp) {
+    if (!inp.name && !inp.notes) { setStatus('⚠️ Введіть назву товару або нотатки!', 'err'); return false; }
+    if (inp.image && !/^https?:\/\//i.test(inp.image)) { setStatus('⚠️ Посилання на фото має починатися з http:// або https://', 'err'); return false; }
+    return true;
+}
+
+function buildManualSourceText(inp) {
+    let txt = '';
+    if (inp.name)    txt += `Назва товару: ${inp.name}\n`;
+    if (inp.article) txt += `Артикул: ${inp.article}\n`;
+    if (inp.image)   txt += `Фото товару (пряме посилання на зображення): ${inp.image}\n`;
+    txt += `\nСИРІ НОТАТКИ ВІД МЕНЕДЖЕРА (неструктурований текст, може бути українською або російською):\n${inp.notes || '(нотаток немає — використовуй лише назву товару)'}\n`;
+    txt += `\nВАЖЛИВО ДЛЯ ЦЬОГО ДЖЕРЕЛА: це лише чернетка-нотатки, а не готова сторінка товару. ` +
+           `Використовуй ТІЛЬКИ факти, які прямо є в нотатках і назві. НІЧОГО не вигадуй: ` +
+           `ні характеристик, ні розмірів, ні матеріалів, ні гарантій. ` +
+           `Якщо даних мало — таблиця характеристик має бути коротшою (рядки без даних не створюй). ` +
+           `Переваги, FAQ і порада формулюються лише на основі наданих фактів і загальновідомого призначення типу товару.`;
+    return txt;
+}
+
+function manualArticleFor(inp) {
+    return inp.article || extractArticle(inp.notes) || '—';
+}
+
+async function runManualAuto() {
+    const inp = readManualInput();
+    if (!validateManualInput(inp)) return;
+
+    autoCancelled = false;
+    currentSourceUrl = '';
+    lockAll(true);
+    apReset(); apShow();
+    document.getElementById('apCancelBtn').disabled = false;
+    clearResults(); setStatus('');
+
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+    const source = { text: buildManualSourceText(inp), article: manualArticleFor(inp), label: '' };
+
+    const onStage = (idx, state, msg) => {
+        apSetStep(idx, state);
+        if (msg) apSetMsg(msg);
+        apSetBar(Math.min(100, (idx + (state === 'done' ? 1 : 0.4)) * 25));
+    };
+
+    const res = await processProduct(source, managerNotes, false, onStage, () => autoCancelled, false, showPartialResult);
+
+    if (autoCancelled) { apSetMsg('⛔ Авто-режим скасовано'); setStatus('⛔ Скасовано.', ''); unlockAfterPartial(res); return; }
+    if (!res.ok) { setStatus('❌ Помилка обробки: ' + (res.error || 'unknown'), 'err'); unlockAfterPartial(res); return; }
+
+    showLastResultInMainFields(res);
+    apSetMsg('✅ Все готово! Для запису в таблицю натисніть «📊 В таблицю».');
+    setStatus(`✅ Авто-режим завершено! Артикул: ${res.article}`, 'ok');
+    lockAll(false);
+    document.getElementById('seoBtn').disabled  = false;
+    document.getElementById('nameBtn').disabled = false;
+    document.getElementById('saveBtn').disabled = false;
+}
+
+async function generateManual(noBrand) {
+    const inp = readManualInput();
+    if (!validateManualInput(inp)) return;
+
+    _noBrandMode = noBrand;
+    currentSourceUrl = '';
+    const managerNotes = document.getElementById('managerNotes').value.trim();
+    const modeLabel = noBrand ? ' [БЕЗ БРЕНДА]' : '';
+
+    ['genBtn','noBrandBtn','autoBtn','seoBtn','nameBtn','saveBtn'].forEach(id => { document.getElementById(id).disabled = true; });
+    clearResults();
+    showArticle(manualArticleFor(inp));
+
+    setStatus(`⏳ Генерую УКР опис за нотатками${modeLabel}...`, '');
+    const ua = await callServer(buildPrompt(buildManualSourceText(inp), 'ukrainian', managerNotes, noBrand));
+    if (ua.ok) {
+        document.getElementById('resUA').value = wrapTreelandOutput(ua.text);
+        showBlock('blockUA');
+        setStatus(`⏳ Перекладаю на РУС${modeLabel}...`, '');
+        const ru = await callServer(buildTranslatePrompt(ua.text, noBrand));
+        if (ru.ok) {
+            document.getElementById('resRU').value = wrapTreelandOutput(ru.text);
+            showBlock('blockRU');
+            document.getElementById('seoBtn').disabled = false;
+            setStatus(`✅ Описи готові${modeLabel}! Артикул: ${currentArticle}. Наступний крок — SEO-ключі.`, 'ok');
+        } else {
+            setStatus('⚠️ УКР готово, але сталася помилка при генерації РУС — ' + lastServerError, '');
+        }
+    } else {
+        setStatus('❌ Помилка при генерації опису — ' + lastServerError, 'err');
+    }
+
+    document.getElementById('genBtn').disabled     = false;
+    document.getElementById('noBrandBtn').disabled = false;
+    document.getElementById('autoBtn').disabled    = false;
+}
 
 function selectInstaCt(el) {
     document.querySelectorAll('.ct-tab').forEach(t => t.classList.remove('active'));
