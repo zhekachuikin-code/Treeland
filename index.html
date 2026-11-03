@@ -1554,8 +1554,8 @@ async function callServer(prompt, attempt = 0) {
 }
 
 // «Будимо» сервер при відкритті сторінки, щоб перший запит не чекав холодного старту.
-// 404 на «/» у консолі — це нормально: сервер відповів, отже прокинувся.
-fetch(SERVER_URL.replace('/api/generate', '/'), { mode: 'no-cors' }).catch(() => {});
+// Запит на /health — легка перевірка, що сервер живий.
+fetch(SERVER_URL.replace('/api/generate', '/health'), { mode: 'no-cors' }).catch(() => {});
 
 // ─── PROMHTML ОБГОРТКА ────────────────────────────────────────────────────────
 // AI сама дописує <promhtml>...</promhtml> навколо HTML-опису (за інструкцією в
