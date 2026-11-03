@@ -1537,8 +1537,13 @@ async function callServer(prompt, attempt = 0) {
         clearTimeout(timer);
         lastServerError = e.name === 'AbortError' ? `таймаут ${SERVER_TIMEOUT_MS / 1000} с` : 'мережева помилка: ' + e.message;
     }
-    if (attempt < 1) {
-        await new Promise(r => setTimeout(r, 3000));
+    // Перевантаження моделі (503 / «high demand») зазвичай тимчасове — чекаємо і повторюємо
+    // з наростаючою паузою: 5 → 15 → 30 с (усього до 3 повторів).
+    if (attempt < 3) {
+        const delay = [5000, 15000, 30000][attempt];
+        const msg = `⏳ Сервер/модель перевантажені (${lastServerError}). Повтор ${attempt + 1}/3 через ${delay / 1000} с...`;
+        try { if (typeof apSetMsg === 'function') apSetMsg(msg); setStatus(msg, ''); } catch (e) {}
+        await new Promise(r => setTimeout(r, delay));
         return callServer(prompt, attempt + 1);
     }
     return { ok: false, text: '' };
